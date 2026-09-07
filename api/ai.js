@@ -113,9 +113,17 @@ module.exports = async function handler(req, res) {
   // model — i.e. the teacher grader. Plain chat sends only { message }.
   const isStructured = selectedModel !== null || (typeof systemPrompt === "string" && systemPrompt.trim() !== "");
 
-  // Upstream (OpenRouter) timeout so a slow/hung model can't stall the function
-  // for "minutes". Kept below the client's 25 s grader timeout.
-  const UPSTREAM_TIMEOUT_MS = 20000;
+  // Upstream (OpenRouter) timeout. Kept comfortably BELOW two hard limits so the
+  // function always returns its OWN clean error instead of being force-killed:
+  //   1. Vercel's serverless max duration (10 s on Hobby). The old 20 s wait was
+  //      killed by the platform at 10 s and surfaced to the browser as an opaque
+  //      hang — which the client's AbortController reported as
+  //      "signal is aborted without reason".
+  //   2. The client's 12 s grader fetch timeout (teacher.js AI_TIMEOUT_MS), so
+  //      the browser receives this response rather than aborting first.
+  // 9 s gives DeepSeek V4 Flash 0731 room to answer while failing fast when it
+  // cannot. No stacking, no server-side retry: one request, one short timeout.
+  const UPSTREAM_TIMEOUT_MS = 9000;
 
   // Most recent upstream failure, surfaced to structured callers/logs.
   // lastFailure is the structured form returned in the (temporary) 502 diagnostic.
@@ -244,7 +252,12 @@ module.exports = async function handler(req, res) {
             ? `OpenRouter HTTP ${lastFailure.status}: ${lastFailure.body || ""}`
             : `${lastFailure.stage}: ${lastFailure.message || lastFailure.body || ""}`)
         : "no upstream response was captured";
-      return res.status(502).json({
+      // A timeout / network failure is a gateway timeout (504); an upstream error
+      // reply, parse failure or empty completion is a bad gateway (502). Distinct
+      // codes make the real cause visible in Network → /api/ai instead of hidden.
+      const timedOutOrNetwork = lastFailure && (lastFailure.stage === "timeout" || lastFailure.stage === "network");
+      const statusCode = timedOutOrNetwork ? 504 : 502;
+      return res.status(statusCode).json({
         error: upstreamMsg,
         upstream: lastFailure,
         request: {

@@ -784,7 +784,12 @@
   // has submitted. All lesson content and questions are programmed in
   // teacherData.js (see buildTeachTurn / buildQuestion) and never touch the API,
   // so loading a lesson or showing a question makes ZERO /api/ai calls.
-  const AI_TIMEOUT_MS = 25000;
+  // Client-side grader timeout. Deliberately LONGER than the server's 9 s
+  // upstream timeout (api/ai.js UPSTREAM_TIMEOUT_MS) so the browser always
+  // receives the server's real HTTP response/error instead of aborting itself
+  // (the old 20 s+25 s stack produced "signal is aborted without reason"). One
+  // request; a timeout is NOT retried — only malformed JSON is.
+  const AI_TIMEOUT_MS = 12000;
 
   // The grader model is configurable: api/ai.js allow-lists which model a request
   // may select, so this single constant repoints all grading in one edit. Must
@@ -801,7 +806,8 @@
     "Do not use keyword matching. Do not require the expected answer wording. Score does not decide the verdict.",
     "feedback: one or two short sentences for text-to-speech. If correct, briefly confirm; if partial, say what was right and exactly what is missing; if incorrect, name the misconception and give the correct idea.",
     "score is supporting only: correct 80-100, partial 40-79, incorrect 0-39.",
-    "Return JSON only, no prose or code fences: {\"verdict\":\"correct|partial|incorrect\",\"score\":0,\"feedback\":\"...\",\"missing\":[\"...\"],\"correction\":\"...\"}"
+    "Reply with ONLY the JSON object below, on a single line — no prose, no explanation, no markdown or code fences, nothing before or after it. Keep feedback to one or two short sentences so the JSON is never truncated.",
+    "{\"verdict\":\"correct|partial|incorrect\",\"score\":0,\"feedback\":\"...\",\"missing\":[\"...\"],\"correction\":\"...\"}"
   ].join("\n");
 
   async function callGrader(question, expected, required, answer) {
@@ -820,9 +826,16 @@
       res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system: GRADER_SYSTEM, message, model: GRADER_MODEL, max_tokens: 220, temperature: 0.2 }),
+        body: JSON.stringify({ system: GRADER_SYSTEM, message, model: GRADER_MODEL, max_tokens: 300, temperature: 0.2 }),
         signal: ctrl ? ctrl.signal : undefined
       });
+    } catch (e) {
+      // Client-side abort (timeout) or a network error. Relabel the opaque
+      // "signal is aborted without reason" so logs name the real cause. This is
+      // a TRANSPORT failure — evaluateAnswer must not retry it.
+      throw new Error(e && e.name === "AbortError"
+        ? ("grader timed out after " + AI_TIMEOUT_MS + " ms")
+        : ("grader network error: " + ((e && e.message) || e)));
     } finally { clearTimeout(timer); }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || ("HTTP " + res.status));
@@ -840,12 +853,35 @@
     t = t.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
     const start = t.indexOf("{");
     const end = t.lastIndexOf("}");
-    if (start === -1 || end === -1 || end <= start) return null;
-    let slice = t.slice(start, end + 1);
-    try { return JSON.parse(slice); } catch (_) { }
-    // second attempt: remove trailing commas
-    try { return JSON.parse(slice.replace(/,\s*([}\]])/g, "$1")); } catch (_) { }
+    if (start !== -1 && end > start) {
+      const slice = t.slice(start, end + 1);
+      try { return JSON.parse(slice); } catch (_) { }
+      // remove trailing commas, then retry
+      try { return JSON.parse(slice.replace(/,\s*([}\]])/g, "$1")); } catch (_) { }
+    }
+    // Truncated (no closing brace, e.g. hit max_tokens) or otherwise malformed:
+    // salvage the fields we need by regex so a valid verdict is still recovered.
+    // This reads ONLY the model's own output — never keyword grading.
+    const salvaged = salvageGrade(t);
+    if (salvaged) return salvaged;
     return null;
+  }
+
+  // Recover the grader fields from a reply that would not JSON.parse. Returns an
+  // object only when a valid verdict is present; feedback/score/correction are
+  // best-effort and may be omitted (normalizeVerdict supplies sane defaults).
+  function salvageGrade(text) {
+    const vm = /"?verdict"?\s*:\s*"?(correct|partial|incorrect)"?/i.exec(text);
+    if (!vm) return null;
+    const out = { verdict: vm[1].toLowerCase() };
+    const unq = (s) => { try { return JSON.parse('"' + s + '"'); } catch (_) { return s; } };
+    const fm = /"feedback"\s*:\s*"((?:\\.|[^"\\])*)"/i.exec(text);
+    if (fm) out.feedback = unq(fm[1]);
+    const sm = /"score"\s*:\s*(-?\d+(?:\.\d+)?)/i.exec(text);
+    if (sm) out.score = Number(sm[1]);
+    const cm = /"correction"\s*:\s*"((?:\\.|[^"\\])*)"/i.exec(text);
+    if (cm) out.correction = unq(cm[1]);
+    return out;
   }
   // ── Programmed lesson content (NO AI) ──────────────────────
   // The explanation, board and check question are built entirely from the
@@ -909,18 +945,23 @@
   const GRADER_UNAVAILABLE = { unavailable: true };
 
   async function evaluateAnswer(question, expected, required, answer) {
-    // Retry exactly once — this covers both invalid JSON and API/network failure.
+    // ONE request normally. A timeout, aborted request, or HTTP/network error is
+    // a transport failure and is NOT retried (retrying only makes the student
+    // wait twice for the same failure) — we surface it as unavailable at once.
+    // The single retry is reserved for the one recoverable case: the model
+    // responded but its reply could not be parsed into a valid verdict.
     for (let attempt = 1; attempt <= 2; attempt++) {
-      let reply = null;
+      let reply;
       try {
         reply = await callGrader(question, expected, required, answer);
       } catch (e) {
-        console.warn("grader attempt " + attempt + " failed:", e.message);
-        continue;
+        console.warn("grader request failed (no retry):", e.message);
+        return GRADER_UNAVAILABLE;
       }
       const verdict = normalizeVerdict(parseJSON(reply), expected);
       if (verdict) return verdict;
       console.warn("grader attempt " + attempt + " returned invalid JSON");
+      // Only a malformed reply reaches here; loop retries the request once.
     }
     return GRADER_UNAVAILABLE;
   }
