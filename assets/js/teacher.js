@@ -451,6 +451,8 @@
     tts.generation++;
     tts.active = null;
     tts.speaking = false;
+    // Lip-sync: the mouth animates only while audio is truly playing.
+    el.avatar.classList.remove("is-voicing");
     if (tts.supported) {
       try { window.speechSynthesis.cancel(); } catch (_) { }
       try { window.speechSynthesis.resume(); } catch (_) { }
@@ -482,7 +484,14 @@
         if (watchdog) { clearTimeout(watchdog); watchdog = null; }
         resolve(ok);
       };
-      u.onstart = () => { if (generation === tts.generation) tts.speaking = true; };
+      u.onstart = () => {
+        // Start the mouth ONLY when real audio begins — never on the silent
+        // gap between setAvatarState("speaking") and the first sound.
+        if (generation === tts.generation) {
+          tts.speaking = true;
+          el.avatar.classList.add("is-voicing");
+        }
+      };
       u.onend = () => done(generation === tts.generation);
       u.onerror = () => done(false);
       try {
@@ -529,6 +538,8 @@
       if (generation !== tts.generation) return { cancelled: true };
       tts.speaking = false;
       tts.active = null;
+      // Audio finished naturally: stop the mouth.
+      el.avatar.classList.remove("is-voicing");
       return { cancelled: false };
     })();
     tts.active = { promise: run };
@@ -561,6 +572,9 @@
 
   function setAvatarState(s) {
     el.avatar.classList.remove("state-idle", "state-speaking", "state-thinking");
+    // Leaving the speaking state (idle/thinking) must never leave the mouth
+    // mid-animation; is-voicing is (re)armed by real audio via u.onstart.
+    if (s !== "speaking") el.avatar.classList.remove("is-voicing");
     const avatarCls =
       s === "speaking" ? "state-speaking" :
         s === "thinking" ? "state-thinking" : "state-idle";
@@ -1059,8 +1073,18 @@
   }
   function clearQuestion() { el.questionBox.classList.add("empty"); }
 
-  function showFeedback(verdict, text) {
+  // Transient "checking…" state shown in the SAME feedback card the verdict
+  // will land in, so Submit scrolls once and the viewport stays put.
+  function showChecking() {
     el.feedback.classList.remove("empty", "correct", "partial", "incorrect");
+    el.feedback.classList.add("checking");
+    el.verdict.textContent = "Checking…";
+    el.verdictText.textContent = "E.J.AI is checking your answer…";
+    scrollToInteraction("feedback");
+  }
+
+  function showFeedback(verdict, text) {
+    el.feedback.classList.remove("empty", "checking", "correct", "partial", "incorrect");
     el.feedback.classList.add(verdict);
     el.verdict.textContent =
       verdict === "correct" ? "Correct" : verdict === "partial" ? "Almost" : "Not quite";
@@ -1069,7 +1093,7 @@
   }
   function clearFeedback() {
     el.feedback.classList.add("empty");
-    el.feedback.classList.remove("correct", "partial", "incorrect");
+    el.feedback.classList.remove("checking", "correct", "partial", "incorrect");
   }
 
   // FIX #9: showAnswerArea scrolls to the answer AFTER revealing the element
@@ -1093,9 +1117,13 @@
   function scrollToInteraction(kind) {
     const target = kind === "feedback" ? el.feedback : el.answerArea;
     if (!target || target.classList.contains("hidden") || target.classList.contains("empty")) return;
+    // Feedback anchors to the top (with a navbar offset via scroll-margin-top)
+    // so "checking…" and the verdict land at the same stable position — the
+    // viewport barely moves between the two. The answer area stays centred.
+    const block = kind === "feedback" ? "start" : "center";
     window.requestAnimationFrame(() => {
       try {
-        target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center", inline: "nearest" });
+        target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block, inline: "nearest" });
       } catch (_) { try { target.scrollIntoView(); } catch (__) { } }
     });
   }
@@ -1313,6 +1341,9 @@
     el.skipQuestionBtn.disabled = true;
     setAvatarState("thinking");
     setPhase("thinking");
+    // Reveal the feedback card in a "checking…" state and scroll to it now, so
+    // the student's eye is already on the card the verdict will appear in.
+    showChecking();
     const pending = state.pending;
     const { concept, question, expected } = pending;
     // Capture the qid at submission time so a stale async result from a
@@ -1322,6 +1353,7 @@
     // Verify this result still belongs to the active question — a Skip, a new
     // question, or the class ending while awaiting the grader invalidates it.
     if (state.currentQid !== qid || state.consumedQids.has(qid)) {
+      clearFeedback();
       return;
     }
 
@@ -1330,6 +1362,8 @@
     // mastery and results untouched, and re-enable Submit so they can try again.
     if (result.unavailable) {
       setPhase("turn");
+      // Don't leave the card stuck on "checking…" — the student will retry.
+      clearFeedback();
       const notice = "Sorry, I couldn't check that answer just now. Please press Submit to try again.";
       const said = await say(notice);
       await waitForSpeech(said, notice);

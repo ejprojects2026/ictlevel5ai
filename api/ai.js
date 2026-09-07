@@ -117,8 +117,10 @@ module.exports = async function handler(req, res) {
   // for "minutes". Kept below the client's 25 s grader timeout.
   const UPSTREAM_TIMEOUT_MS = 20000;
 
-  // Most recent upstream failure reason, surfaced to structured callers/logs.
+  // Most recent upstream failure, surfaced to structured callers/logs.
+  // lastFailure is the structured form returned in the (temporary) 502 diagnostic.
   let lastError = "";
+  let lastFailure = null;
 
   // ── Shared request payload builder ───────────────────────────────────
   function buildPayload(model) {
@@ -149,19 +151,23 @@ module.exports = async function handler(req, res) {
       });
     } catch (fetchError) {
       // Network / DNS error, or the upstream timeout above fired (AbortError).
-      lastError = fetchError.name === "AbortError"
+      const timedOut = fetchError.name === "AbortError";
+      lastError = timedOut
         ? `[${model}] timed out after ${UPSTREAM_TIMEOUT_MS} ms`
         : `[${model}] fetch error: ${fetchError.message}`;
+      lastFailure = { model, stage: timedOut ? "timeout" : "network", message: timedOut ? `timed out after ${UPSTREAM_TIMEOUT_MS} ms` : fetchError.message };
       console.error(lastError);
       return null;
     } finally {
       clearTimeout(timer);
     }
 
-    // Non-2xx from OpenRouter (invalid model id, auth, rate limit, overload…).
+    // Non-2xx from OpenRouter (invalid model id, auth, credits, rate limit…).
+    // Preserve the EXACT upstream status and body — this IS the real error.
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
-      lastError = `[${model}] HTTP ${response.status}: ${errorText.slice(0, 300)}`;
+      lastError = `[${model}] HTTP ${response.status}: ${errorText}`;
+      lastFailure = { model, stage: "upstream_http", status: response.status, body: errorText.slice(0, 1500) };
       console.error(lastError);
       return null;
     }
@@ -172,6 +178,7 @@ module.exports = async function handler(req, res) {
       data = await response.json();
     } catch (parseError) {
       lastError = `[${model}] JSON parse error: ${parseError.message}`;
+      lastFailure = { model, stage: "parse", message: parseError.message };
       console.error(lastError);
       return null;
     }
@@ -179,6 +186,7 @@ module.exports = async function handler(req, res) {
     const reply = data?.choices?.[0]?.message?.content?.trim();
     if (!reply) {
       lastError = `[${model}] empty reply from model`;
+      lastFailure = { model, stage: "empty_reply", body: JSON.stringify(data).slice(0, 1500) };
       console.error(lastError);
       return null;
     }
@@ -192,7 +200,10 @@ module.exports = async function handler(req, res) {
   if (!process.env.OPENROUTER_API_KEY) {
     console.error("OPENROUTER_API_KEY is not set in the environment.");
     if (isStructured) {
-      return res.status(500).json({ error: "AI grader is not configured: OPENROUTER_API_KEY is missing on the server." });
+      return res.status(500).json({
+        error: "AI grader is not configured: OPENROUTER_API_KEY is missing on the server.",
+        env: { keyPresent: false, keyLength: 0 }
+      });
     }
     return res.status(200).json({ reply: FALLBACK_REPLY });
   }
@@ -221,11 +232,30 @@ module.exports = async function handler(req, res) {
     }
 
     // All models exhausted. A grader/structured request gets a REAL error status
-    // so the failure is visible in the client and logs — never masked as a chat
-    // reply the grader cannot parse. Plain chat gets the friendly notice.
+    // with the EXACT upstream cause — never masked as a chat reply the grader
+    // cannot parse. Plain chat still gets the friendly notice.
     console.error("All models failed. Last error:", lastError);
     if (isStructured) {
-      return res.status(502).json({ error: "All upstream models failed.", detail: lastError });
+      // TEMPORARY DIAGNOSTIC: the response body carries the exact upstream status
+      // and body plus key/model/endpoint info so the cause is visible in
+      // Chrome → Network → /api/ai → Response. Trim this back once the cause is found.
+      const upstreamMsg = lastFailure
+        ? (lastFailure.status
+            ? `OpenRouter HTTP ${lastFailure.status}: ${lastFailure.body || ""}`
+            : `${lastFailure.stage}: ${lastFailure.message || lastFailure.body || ""}`)
+        : "no upstream response was captured";
+      return res.status(502).json({
+        error: upstreamMsg,
+        upstream: lastFailure,
+        request: {
+          endpoint: "https://openrouter.ai/api/v1/chat/completions",
+          model: PRIMARY_MODEL
+        },
+        env: {
+          keyPresent: !!process.env.OPENROUTER_API_KEY,
+          keyLength: (process.env.OPENROUTER_API_KEY || "").length
+        }
+      });
     }
     return res.status(200).json({ reply: FALLBACK_REPLY });
   } catch (error) {

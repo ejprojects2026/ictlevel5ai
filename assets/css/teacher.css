@@ -491,13 +491,14 @@
   95%           { transform: scaleY(0.12); }
 }
 
-/* Mouth — talks only while speaking */
+/* Mouth — talks only while audio is actually playing (is-voicing is toggled
+   by TTS onstart/onend in teacher.js, never by the "speaking" state alone). */
 .avatar-svg .mouth {
   transform-box: fill-box;
   transform-origin: center;
   transition: transform 0.15s ease;
 }
-.teacher-avatar.state-speaking .avatar-svg .mouth {
+.teacher-avatar.is-voicing .avatar-svg .mouth {
   animation: talk 0.32s ease-in-out infinite;
 }
 @keyframes talk {
@@ -689,6 +690,8 @@
   border: 1px solid var(--border-color);
   background: var(--card-color);
   animation: fadeSlideUp 0.4s var(--ease-out) both;
+  /* Clear the sticky navbar (~64px + padding) when Submit scrolls here. */
+  scroll-margin-top: 90px;
 }
 .feedback.empty { display: none; }
 .feedback .verdict {
@@ -713,6 +716,10 @@
 .feedback.correct   .verdict::before { content: '✓'; }
 .feedback.partial   .verdict::before { content: '≈'; }
 .feedback.incorrect .verdict::before { content: '✗'; }
+/* Transient "checking…" state (neutral, no verdict colour) shown while grading */
+.feedback.checking { border-color: var(--border-color); }
+.feedback.checking .verdict { color: var(--text-secondary); background: rgba(148,163,184,0.14); }
+.feedback.checking .verdict::before { content: '⋯'; }
 .feedback .verdict-text {
   font-size: 0.95rem;
   line-height: 1.6;
@@ -1156,7 +1163,7 @@
   .avatar-glow,
   .teacher-avatar.state-speaking .avatar-glow,
   .avatar-svg .eye,
-  .teacher-avatar.state-speaking .avatar-svg .mouth,
+  .teacher-avatar.is-voicing .avatar-svg .mouth,
   .teacher-avatar.state-speaking .sound-rings span,
   .thinking-bubble span,
   .status-pill .dot,
