@@ -89,22 +89,36 @@ module.exports = async function handler(req, res) {
     chatMessages.push({ role: "user", content: message.trim() });
   }
 
-  // Friendly fallback message shown only when ALL models fail
+  // Friendly fallback message shown only when a PLAIN CHAT request cannot reach
+  // any model. Structured requests (the teacher's grader) never receive this —
+  // they get a real error status so the failure is visible, not masked as a reply.
   const FALLBACK_REPLY =
     "EJ.Ai is currently busy helping other students. Please try again in a few seconds.";
 
-  // ── Model priority list ───────────────────────────────────────────────
-  // Try primary first; on any failure wait 1 s then try fallback.
-  const ALLOWED_REQUEST_MODELS = new Set([
-    "deepseek/deepseek-v4-flash-0731"
-  ]);
+  // ── Model selection ───────────────────────────────────────────────────
+  // DeepSeek V4 Flash 0731 (GA, released 2026-07-31). The grader (teacher.js)
+  // requests it via the allow-list; plain chat uses it as the default too. No
+  // substitution to another model family — if it fails, the error is surfaced
+  // below so the real cause is visible instead of masked.
+  // NOTE: V4 Flash 0731 does NOT support response_format, so grading relies on a
+  // compact JSON prompt + parse/validate/retry (teacher.js), never response_format.
+  const PRIMARY_MODEL = "deepseek/deepseek-v4-flash-0731";
+  const ALLOWED_REQUEST_MODELS = new Set([PRIMARY_MODEL]);
   const selectedModel = typeof requestedModel === "string" && ALLOWED_REQUEST_MODELS.has(requestedModel)
     ? requestedModel
     : null;
-  const MODELS = selectedModel ? [selectedModel] : [
-    "deepseek/deepseek-v4-flash:free",
-    "deepseek/deepseek-v4-flash"
-  ];
+  const MODELS = selectedModel ? [selectedModel] : [PRIMARY_MODEL];
+
+  // A "structured" request carries a custom system prompt or an allow-listed
+  // model — i.e. the teacher grader. Plain chat sends only { message }.
+  const isStructured = selectedModel !== null || (typeof systemPrompt === "string" && systemPrompt.trim() !== "");
+
+  // Upstream (OpenRouter) timeout so a slow/hung model can't stall the function
+  // for "minutes". Kept below the client's 25 s grader timeout.
+  const UPSTREAM_TIMEOUT_MS = 20000;
+
+  // Most recent upstream failure reason, surfaced to structured callers/logs.
+  let lastError = "";
 
   // ── Shared request payload builder ───────────────────────────────────
   function buildPayload(model) {
@@ -118,6 +132,8 @@ module.exports = async function handler(req, res) {
 
   // ── Single model attempt ──────────────────────────────────────────────
   async function tryModel(model) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), UPSTREAM_TIMEOUT_MS);
     let response;
     try {
       response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -128,18 +144,25 @@ module.exports = async function handler(req, res) {
           "HTTP-Referer": "https://ictdiploma.com",
           "X-Title": "VTA ICT L5 Community AI"
         },
-        body: buildPayload(model)
+        body: buildPayload(model),
+        signal: ctrl.signal
       });
     } catch (fetchError) {
-      // Network / DNS / timeout error
-      console.error(`[${model}] fetch error:`, fetchError.message);
+      // Network / DNS error, or the upstream timeout above fired (AbortError).
+      lastError = fetchError.name === "AbortError"
+        ? `[${model}] timed out after ${UPSTREAM_TIMEOUT_MS} ms`
+        : `[${model}] fetch error: ${fetchError.message}`;
+      console.error(lastError);
       return null;
+    } finally {
+      clearTimeout(timer);
     }
 
-    // Non-2xx from OpenRouter (rate limit, overload, etc.)
+    // Non-2xx from OpenRouter (invalid model id, auth, rate limit, overload…).
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
-      console.error(`[${model}] HTTP ${response.status}:`, errorText);
+      lastError = `[${model}] HTTP ${response.status}: ${errorText.slice(0, 300)}`;
+      console.error(lastError);
       return null;
     }
 
@@ -148,17 +171,30 @@ module.exports = async function handler(req, res) {
     try {
       data = await response.json();
     } catch (parseError) {
-      console.error(`[${model}] JSON parse error:`, parseError.message);
+      lastError = `[${model}] JSON parse error: ${parseError.message}`;
+      console.error(lastError);
       return null;
     }
 
     const reply = data?.choices?.[0]?.message?.content?.trim();
     if (!reply) {
-      console.error(`[${model}] Empty reply from model`);
+      lastError = `[${model}] empty reply from model`;
+      console.error(lastError);
       return null;
     }
 
     return reply;
+  }
+
+  // ── Missing credential guard ──────────────────────────────────────────
+  // A missing/misnamed key is the most common silent failure. Surface it
+  // explicitly instead of sending "Bearer undefined" and getting a 401.
+  if (!process.env.OPENROUTER_API_KEY) {
+    console.error("OPENROUTER_API_KEY is not set in the environment.");
+    if (isStructured) {
+      return res.status(500).json({ error: "AI grader is not configured: OPENROUTER_API_KEY is missing on the server." });
+    }
+    return res.status(200).json({ reply: FALLBACK_REPLY });
   }
 
   // ── Fallback loop ─────────────────────────────────────────────────────
@@ -166,9 +202,9 @@ module.exports = async function handler(req, res) {
     for (let i = 0; i < MODELS.length; i++) {
       const model = MODELS[i];
 
-      // Wait 1 second before every retry (not before the first attempt)
+      // Small backoff before each retry (not before the first attempt).
       if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 600));
       }
 
       console.log(`Attempting model: ${model}`);
@@ -176,22 +212,28 @@ module.exports = async function handler(req, res) {
       const reply = await tryModel(model);
 
       if (reply !== null) {
-        // Success — return immediately
-        console.log(`Success with model: ${model}`);
-        console.log(`Duration: ${Date.now() - startTime} ms`);
-        console.log("AI RESPONSE SENT");
+        // Success — return immediately.
+        console.log(`Success with model: ${model} (${Date.now() - startTime} ms)`);
         return res.status(200).json({ reply, model });
       }
 
       console.warn(`Model failed, moving to next: ${model}`);
     }
 
-    // All models exhausted
-    console.error("All models failed. Returning fallback reply.");
+    // All models exhausted. A grader/structured request gets a REAL error status
+    // so the failure is visible in the client and logs — never masked as a chat
+    // reply the grader cannot parse. Plain chat gets the friendly notice.
+    console.error("All models failed. Last error:", lastError);
+    if (isStructured) {
+      return res.status(502).json({ error: "All upstream models failed.", detail: lastError });
+    }
     return res.status(200).json({ reply: FALLBACK_REPLY });
   } catch (error) {
-    // Catch-all for any unexpected handler error
+    // Catch-all for any unexpected handler error.
     console.error("Handler error:", error.message);
+    if (isStructured) {
+      return res.status(500).json({ error: "AI grader error.", detail: error.message });
+    }
     return res.status(200).json({ reply: FALLBACK_REPLY });
   }
 };
