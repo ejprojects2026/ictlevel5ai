@@ -1,0 +1,285 @@
+/* ============================================================
+   VTA ICT L5 Community — Complete Responsive System
+   Ensures perfect rendering across all modern viewports
+   from 320px up to 1440px+. Global overflow prevention.
+   ============================================================ */
+
+/* ── Global Responsive Resets ── */
+img, picture, video, canvas, svg, iframe, embed, object {
+  max-width: 100%;
+  height: auto;
+}
+
+iframe {
+  border: 0;
+}
+
+/* ── Desktop Large: ≥ 1440px ── */
+@media (min-width: 1440px) {
+  .container {
+    max-width: 1280px;
+  }
+}
+
+/* ── Tablet / Small Laptop: 769px – 1024px ── */
+@media (max-width: 1024px) {
+  .hero h1 {
+    font-size: clamp(2.2rem, 5vw, 3rem);
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .notes-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .papers-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  
+  .papers-search-row {
+    max-width: 80%;
+  }
+
+  /* Limit Drawer width */
+  .nav-menu {
+    width: 320px;
+    max-width: 85vw;
+  }
+}
+
+/* ── Tablet / Large Phone: ≤ 768px ── */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 20px;
+  }
+
+  /* Compact, edge-aligned navbar on every page (matches homepage) */
+  .navbar .container {
+    padding: 0.5rem 20px;
+    min-height: 60px;
+  }
+
+  .section {
+    padding: 60px 0;
+  }
+
+  .hero {
+    padding: 80px 0 60px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2rem, 6vw, 2.8rem);
+  }
+  
+  /* Single column grids on narrow tablets/phones */
+  .grid, .notes-grid, .papers-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Compact mobile toolbar for Search & Filter */
+  .papers-search-row {
+    max-width: 100%;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .papers-search-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  
+  .papers-search-input {
+    padding: 0.75rem 2.2rem 0.75rem 2.5rem;
+    font-size: 0.9rem;
+  }
+
+  .papers-search-icon {
+    left: 0.9rem;
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    min-height: 16px;
+  }
+
+  .papers-filter-btn {
+    flex: 0 0 auto;
+    width: auto;
+    padding: 0.65rem 0.75rem;
+    justify-content: center;
+    font-size: 0.8rem;
+  }
+
+  .papers-filter-btn svg {
+    width: 14px !important;
+    height: 14px !important;
+    min-width: 14px !important;
+    min-height: 14px !important;
+  }
+
+  /* Modal scaling for tablet */
+  .pmodal {
+    width: 90vw;
+    height: 80vh;
+  }
+  
+  /* Filter tabs on mobile */
+  .papers-type-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    width: 100%;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .papers-type-tab {
+    flex: 0 0 auto;
+    justify-content: center;
+    white-space: nowrap;
+  }
+}
+
+/* ── Standard Mobile: ≤ 425px ── */
+@media (max-width: 425px) {
+  .container {
+    padding: 0 16px;
+  }
+
+  .navbar .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .hero {
+    padding: 60px 0 40px;
+  }
+
+  .hero p {
+    font-size: 0.95rem;
+  }
+
+  .hero-cta-main {
+    width: 100%;
+  }
+
+  .quick-access-cards {
+    gap: 0.75rem;
+  }
+
+  .qa-card {
+    width: calc(50% - 0.5rem); /* two per row safely */
+    height: 100px;
+  }
+
+  /* Make footer stack better */
+  .footer {
+    padding: 2rem 0;
+  }
+}
+
+/* ── Small Mobile: ≤ 375px ── */
+@media (max-width: 375px) {
+  .hero h1 {
+    font-size: clamp(1.7rem, 7vw, 2rem);
+  }
+
+  .lesson-hero h1 {
+    font-size: 1.6rem;
+  }
+
+  .nav-buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .nav-buttons .btn, .nav-buttons .btn-outline {
+    width: 100%;
+  }
+
+  /* Full-width Get Started on small screens */
+  .hero-cta-main {
+    padding: 0.85rem 1.2rem;
+    font-size: 0.9rem;
+  }
+
+  .psb-item {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+}
+
+/* ── Very Small Mobile: ≤ 320px ── */
+@media (max-width: 320px) {
+  .container {
+    padding: 0 12px;
+  }
+
+  .navbar .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .hero h1 {
+    font-size: 1.5rem;
+  }
+
+  .qa-card {
+    width: 100%; /* one per row */
+    height: 80px;
+    flex-direction: row;
+    justify-content: flex-start;
+    padding-left: 20px;
+  }
+  
+  .qa-icon-wrap {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+
+/* ── Safe area insets (iPhone notch/home bar) ── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .floating-ai-widget,
+  .floating-create-btn {
+    bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  }
+
+  .chat-input-area {
+    padding-bottom: env(safe-area-inset-bottom, 1.2rem);
+  }
+  
+  /* Ensure modal is safe from top notch / bottom bar on iOS */
+  .pmodal {
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* ── Print styles ── */
+@media print {
+  .navbar,
+  .floating-ai-widget,
+  .floating-create-btn,
+  .mobile-menu-btn,
+  body::before,
+  body::after {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  .card, .note-card, .post-card {
+    border: 1px solid #ccc;
+    box-shadow: none;
+  }
+}

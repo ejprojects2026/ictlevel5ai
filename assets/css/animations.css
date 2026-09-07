@@ -1,0 +1,257 @@
+/* ============================================================
+   VTA ICT L5 Community — Premium 2026 Animations
+   Background canvas, micro-interactions, transitions
+   ============================================================ */
+
+/* ============================================================
+   ANIMATED BACKGROUND — Canvas Layer
+   Two pseudo-elements: grid + ambient glow
+   ============================================================ */
+
+/* ── Layer 1: Animated grid with depth ── */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  pointer-events: none;
+  z-index: -2;
+  will-change: background-position;
+
+  background-image:
+    /* Vertical lines */
+    repeating-linear-gradient(
+      to right,
+      rgba(155, 28, 49, 0.07) 0px,
+      rgba(155, 28, 49, 0.07) 1px,
+      transparent 1px,
+      transparent 48px
+    ),
+    /* Horizontal lines */
+    repeating-linear-gradient(
+      to bottom,
+      rgba(155, 28, 49, 0.07) 0px,
+      rgba(155, 28, 49, 0.07) 1px,
+      transparent 1px,
+      transparent 48px
+    );
+
+  background-size: 48px 48px;
+  animation: gridDrift 35s linear infinite alternate;
+}
+
+@keyframes gridDrift {
+  0%   { background-position: 0px 0px; transform: translate(0, 0); }
+  100% { background-position: 12px 8px; transform: translate(0, 0); }
+}
+
+/* ── Layer 2: Ambient glow orbs ── */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  pointer-events: none;
+  z-index: -1;
+  will-change: opacity;
+
+  background:
+    /* Top-right corner glow */
+    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(155,28,49,0.12) 0%, transparent 60%),
+    /* Bottom-left glow */
+    radial-gradient(ellipse 50% 35% at 15% 90%, rgba(100,15,30,0.1) 0%, transparent 60%),
+    /* Center pulse */
+    radial-gradient(ellipse 70% 50% at 50% 50%, rgba(155,28,49,0.04) 0%, transparent 70%);
+
+  animation: ambientShift 20s ease-in-out infinite alternate;
+}
+
+@keyframes ambientShift {
+  0%   { opacity: 0.7; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.8; }
+}
+
+/* Light theme: muted, clean background */
+.light-theme body::before {
+  background-image:
+    repeating-linear-gradient(to right, rgba(155,28,49,0.04) 0px, rgba(155,28,49,0.04) 1px, transparent 1px, transparent 48px),
+    repeating-linear-gradient(to bottom, rgba(155,28,49,0.04) 0px, rgba(155,28,49,0.04) 1px, transparent 1px, transparent 48px);
+}
+
+/* ============================================================
+   MICRO-INTERACTIONS — Buttons
+   ============================================================ */
+
+/* Premium button press ripple */
+.btn-primary,
+.btn-outline,
+.admin-login-submit,
+.success-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Cards — lift with glow ── */
+.card,
+.note-card,
+.post-card,
+.card-like {
+  will-change: transform, box-shadow;
+}
+
+/* ── Nav links — shimmer underline ── */
+.nav-links a::after {
+  /* Defined in style.css, enhanced here */
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ============================================================
+   PAGE LOAD ANIMATIONS
+   Stagger children in grid on load
+   ============================================================ */
+
+/* Hero section entrance */
+.hero > .container > * {
+  animation-fill-mode: both;
+}
+
+/* Staggered grid children */
+.grid > .card:nth-child(1) { animation-delay: 0.05s; }
+.grid > .card:nth-child(2) { animation-delay: 0.1s; }
+.grid > .card:nth-child(3) { animation-delay: 0.15s; }
+.grid > .card:nth-child(4) { animation-delay: 0.2s; }
+.grid > .card:nth-child(5) { animation-delay: 0.25s; }
+.grid > .card:nth-child(6) { animation-delay: 0.3s; }
+.grid > .card:nth-child(7) { animation-delay: 0.35s; }
+.grid > .card:nth-child(8) { animation-delay: 0.4s; }
+.grid > .card:nth-child(9) { animation-delay: 0.45s; }
+
+.grid > .card {
+  animation: cardEntrance 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ============================================================
+   SCROLL REVEAL — lightweight intersection observer hook
+   Add .reveal class via JS for scroll-triggered entrance
+   ============================================================ */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ============================================================
+   LOADING SHIMMER
+   ============================================================ */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.09) 50%,
+    rgba(255,255,255,0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmerAnim 1.6s infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmerAnim {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ============================================================
+   FLOATING AI WIDGET — Enhanced
+   ============================================================ */
+@keyframes ai-bounce-in {
+  0%   { opacity: 0; transform: translateY(80px) scale(0.6); }
+  60%  { opacity: 1; transform: translateY(-10px) scale(1.06); }
+  80%  { transform: translateY(4px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes ai-pulse {
+  0%, 100% {
+    box-shadow: 0 4px 20px rgba(155, 28, 49, 0.55), 0 0 0 0 rgba(155, 28, 49, 0.35);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(155, 28, 49, 0.55), 0 0 0 12px rgba(155, 28, 49, 0);
+  }
+}
+
+@keyframes ai-popup-appear {
+  from { opacity: 0; transform: translateY(14px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes ai-popup-fade-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(8px) scale(0.96); pointer-events: none; }
+}
+
+@keyframes android-pulse {
+  0%, 100% { box-shadow: 0 4px 18px rgba(61, 220, 132, 0.45), 0 0 0 0 rgba(61, 220, 132, 0.35); }
+  50%       { box-shadow: 0 4px 18px rgba(61, 220, 132, 0.45), 0 0 0 12px rgba(61, 220, 132, 0); }
+}
+
+/* ============================================================
+   FOCUS VISIBLE — Accessibility
+   ============================================================ */
+:focus-visible {
+  outline: 2px solid rgba(155, 28, 49, 0.7);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   HOVER TEXT GLOW — Nav links
+   ============================================================ */
+nav a:hover,
+.nav-link:hover,
+.navbar a:hover {
+  text-shadow: none; /* handled by color change in style.css */
+}
+
+/* ============================================================
+   PERFORMANCE — reduce motion preference
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  body::after {
+    animation: none !important;
+  }
+
+  .grid > .card {
+    animation: none !important;
+  }
+
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

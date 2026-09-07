@@ -1,0 +1,305 @@
+/* ============================================================
+   COMMUNITY FEED — Premium 2026 Social Platform UI
+   ============================================================ */
+
+/* ── Feed layout ── */
+.feed-container {
+  max-width: 650px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.community-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ============================================================
+   POST CARD — Glass + Red Border System
+   ============================================================ */
+.post-card {
+  background: rgba(14, 18, 26, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 18px;
+  padding: 1.5rem;
+  box-shadow:
+    0 4px 24px rgba(0,0,0,0.4),
+    0 0 0 1px rgba(155,28,49,0.06);
+  transition:
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s ease;
+  color: var(--text-color);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Top accent strip */
+.post-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(155,28,49,0.5), transparent);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.post-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(155,28,49,0.3);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.5),
+    0 0 0 1px rgba(155,28,49,0.18),
+    0 0 24px rgba(155,28,49,0.1);
+}
+
+.post-card:hover::before {
+  opacity: 1;
+}
+
+/* Light theme post card */
+.light-theme .post-card {
+  background: rgba(255,255,255,0.88);
+  border-color: rgba(0,0,0,0.06);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+}
+
+.light-theme .post-card:hover {
+  box-shadow: 0 6px 28px rgba(0,0,0,0.13), 0 0 0 1px rgba(155,28,49,0.2);
+}
+
+/* ── Post Header ── */
+.post-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+  font-size: 0.9rem;
+}
+
+.post-author {
+  font-weight: 700;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.92rem;
+}
+
+.post-author::before {
+  content: '';
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(155,28,49,0.3), rgba(192,57,78,0.2));
+  border: 1px solid rgba(155,28,49,0.35);
+  flex-shrink: 0;
+  /* Avatar placeholder */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239B1C31'%3E%3Cpath d='M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z'/%3E%3C/svg%3E");
+  background-size: 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.post-date {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  background: rgba(255,255,255,0.04);
+  padding: 0.22rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+.light-theme .post-date {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.06);
+}
+
+/* ── Caption ── */
+.post-caption {
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0.6rem 0 1rem;
+  color: var(--text-color);
+  word-wrap: break-word;
+}
+
+/* ── Image container ── */
+.post-image {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 0.75rem 0;
+  border: 1px solid rgba(255,255,255,0.05);
+  background: rgba(0,0,0,0.2);
+}
+
+.post-image img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  max-height: 480px;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.post-image:hover img {
+  transform: scale(1.02);
+}
+
+/* ── Post Footer ── */
+.post-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.light-theme .post-footer {
+  border-top-color: rgba(0,0,0,0.06);
+}
+
+/* ── Like button ── */
+.like-button {
+  background: rgba(248,113,113,0.06);
+  border: 1px solid rgba(248,113,113,0.2);
+  color: #f87171;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  font-family: inherit;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.like-button:hover {
+  background: rgba(248,113,113,0.15);
+  border-color: rgba(248,113,113,0.5);
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(248,113,113,0.2);
+}
+
+.like-button:active {
+  transform: scale(0.95);
+}
+
+.like-count {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* ── Empty state ── */
+.empty-feed {
+  text-align: center;
+  padding: 4rem 1.5rem;
+  background: rgba(14,18,26,0.6);
+  border-radius: 20px;
+  border: 1px dashed rgba(155,28,49,0.3);
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  backdrop-filter: blur(4px);
+}
+
+/* ── Loading indicator ── */
+.loading-indicator {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* ============================================================
+   FLOATING CREATE BUTTON — Premium
+   ============================================================ */
+.floating-create-btn {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 58px;
+  height: 58px;
+  background: linear-gradient(135deg, #9B1C31 0%, #c0394e 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 2.2rem;
+  font-weight: 300;
+  text-decoration: none;
+  box-shadow:
+    0 8px 24px rgba(155,28,49,0.55),
+    0 0 0 2px rgba(255,255,255,0.06);
+  transition:
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.25s ease,
+    background var(--transition-fast);
+  z-index: 999;
+  border: none;
+  cursor: pointer;
+}
+
+.floating-create-btn:hover {
+  transform: scale(1.1) translateY(-3px);
+  box-shadow:
+    0 14px 32px rgba(155,28,49,0.7),
+    0 0 0 3px rgba(192,57,78,0.25);
+  background: linear-gradient(135deg, #b22b40 0%, #cc4257 100%);
+}
+
+.floating-create-btn:active {
+  transform: scale(0.96);
+  box-shadow: 0 4px 12px rgba(155,28,49,0.4);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 600px) {
+  .feed-container {
+    padding: 1rem 0.75rem;
+  }
+
+  .post-card {
+    padding: 1.2rem;
+    border-radius: 16px;
+  }
+
+  .post-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .post-date {
+    align-self: flex-start;
+  }
+
+  .floating-create-btn {
+    bottom: 1.5rem;
+    right: 1.5rem;
+    width: 52px;
+    height: 52px;
+    font-size: 2rem;
+  }
+
+  .like-button {
+    padding: 0.28rem 0.7rem;
+    font-size: 1rem;
+  }
+}

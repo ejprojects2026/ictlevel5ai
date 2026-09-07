@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Browse ICT Level 5 notes on Programming, Databases, Networking, Web Dev, and more.">
+    <title>Lessons · VTA ICT L5 Community</title>
+    <!-- Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/responsive.css">
+    <link rel="stylesheet" href="assets/css/animations.css">
+    <link rel="stylesheet" href="assets/css/lesson.css">
+</head>
+
+<body>
+    <!-- Navbar (identical to index.html, with active lesson link) -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">VTA ICT L5 Community</div>
+            <button class="mobile-menu-btn" aria-label="Menu">☰</button>
+            <div class="nav-menu">
+                <ul class="nav-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="lesson.html" class="active">Notes</a></li>
+                    <li><a href="papers.html">Papers</a></li>
+                    <li><a href="teacher.html">AI Teacher</a></li>
+                    <li><a href="posts.html">Community</a></li>
+                </ul>
+                <div class="nav-buttons">
+                    <a href="upload.html" class="btn btn-outline">Add Notes</a>
+                    <button id="theme-toggle" class="btn" aria-label="Toggle theme">☀️</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="lesson-main">
+        <!-- Hero + search -->
+        <section class="lesson-hero">
+            <div class="container">
+                <h1>Lessons & Community Notes</h1>
+                <p class="hero-subtitle">Browse notes shared by the community</p>
+                <div class="search-wrapper">
+                    <input type="text" id="searchInput" class="search-input"
+                        placeholder="Search by title, subject, or uploader...">
+                    <span class="search-icon">🔍</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Subtle admin access link -->
+        <a href="admin-login.html" class="admin-access">🛡 Moderation</a>
+
+        <!-- Top contributors card (dynamic) -->
+        <section class="container contributors-section">
+            <div class="contributors-card">
+                <h2 class="contributors-title">🏆 Top Contributors This Month</h2>
+                <div id="topContributorsList" class="contributors-list">
+                    <!-- filled by JS -->
+                    <div class="contributor-row"><span class="rank">🥇</span> <span class="name">Loading</span> <span
+                            class="count">? uploads</span></div>
+                    <div class="contributor-row"><span class="rank">🥈</span> <span class="name">Loading</span> <span
+                            class="count">? uploads</span></div>
+                    <div class="contributor-row"><span class="rank">🥉</span> <span class="name">Loading</span> <span
+                            class="count">? uploads</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Subject filter pills -->
+        <section class="container filters-section">
+            <div class="filter-pills" id="filterPills">
+                <button class="pill active" data-subject="all">
+                    <span class="pill-emoji">🔴</span>
+                    <span class="pill-label">All</span>
+                </button>
+                <button class="pill" data-subject="Programming">
+                    <span class="pill-emoji">💻</span>
+                    <span class="pill-label">Programming</span>
+                </button>
+                <button class="pill" data-subject="Database Systems">
+                    <span class="pill-emoji">🗄️</span>
+                    <span class="pill-label">Database Systems</span>
+                </button>
+                <button class="pill" data-subject="Networking">
+                    <span class="pill-emoji">🌐</span>
+                    <span class="pill-label">Networking</span>
+                </button>
+                <button class="pill" data-subject="Web Development">
+                    <span class="pill-emoji">🖥️</span>
+                    <span class="pill-label">Web Development</span>
+                </button>
+                <button class="pill" data-subject="Software Testing">
+                    <span class="pill-emoji">🧪</span>
+                    <span class="pill-label">Software Testing</span>
+                </button>
+                <button class="pill" data-subject="Graphic Design">
+                    <span class="pill-emoji">🎨</span>
+                    <span class="pill-label">Graphic Design</span>
+                </button>
+                <button class="pill" data-subject="System Analysis">
+                    <span class="pill-emoji">📊</span>
+                    <span class="pill-label">System Analysis</span>
+                </button>
+                <button class="pill" data-subject="Information Management">
+                    <span class="pill-emoji">📋</span>
+                    <span class="pill-label">Information Management</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Notes grid -->
+        <section class="container notes-section">
+            <div id="notesGrid" class="notes-grid">
+                <!-- dynamic cards will appear here -->
+                <div class="loading-indicator">Loading notes...</div>
+            </div>
+        </section>
+
+        <!-- Lesson Preview Modal -->
+        <div id="lessonPreviewModal" class="lesson-modal-overlay hidden">
+            <div class="lesson-modal-container">
+                <div class="lesson-modal-header">
+                    <h3 class="lesson-modal-title" id="lessonModalTitle">Preview</h3>
+                    <div class="lesson-modal-actions">
+                        <a id="lessonModalNewTabBtn" href="#" target="_blank" class="lesson-modal-btn">New Tab</a>
+                        <button id="lessonModalCloseBtn" class="lesson-modal-btn close-btn" aria-label="Close">✕</button>
+                    </div>
+                </div>
+                <div class="lesson-modal-body">
+                    <div id="lessonModalLoader" class="lesson-modal-loader">
+                        <div class="spinner"></div>
+                    </div>
+                    <iframe id="lessonModalIframe" class="lesson-modal-iframe" allowfullscreen></iframe>
+                    <div id="lessonModalFallback" class="lesson-modal-fallback hidden">
+                        <div class="fallback-icon-wrapper">
+                            <span class="fallback-icon">📄</span>
+                        </div>
+                        <h4 id="lessonModalFallbackTitle" class="fallback-title">Document Name</h4>
+                        <p class="fallback-desc">For the best experience on this device, open the file directly.</p>
+                        <a id="lessonModalFallbackBtn" href="#" target="_blank" class="btn fallback-btn">Open PDF</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer (same as index) -->
+    <footer class="footer" id="siteFooter">
+        <div class="container">
+            <p>© 2026 VTA ICT L5 Community. All rights reserved.</p>
+            <p>VTA ICT Level 5 Community — Academic excellence through collaboration.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <!-- Supabase library (required for supabaseClient) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Our local supabase config + client -->
+    <script src="assets/js/supabase.js"></script>
+    <!-- UI helpers (theme toggle, mobile menu) – reuses existing code -->
+    <script src="assets/js/ui.js"></script>
+    <!-- Page specific logic: fetch notes, render, filter -->
+    <script src="assets/js/lesson.js"></script>
+
+    <!-- ===== Floating EJ.Ai Widget ===== -->
+    <div class="floating-ai-widget" id="floatingAiWidget">
+      <!-- Popup message -->
+      <div class="ai-popup-message" id="aiPopup">
+        <span class="ai-popup-close" id="aiPopupClose" aria-label="Close">✕</span>
+        <p class="ai-popup-line1">Hello 👋</p>
+        <p class="ai-popup-line2">Need help with ICT or coding?</p>
+        <a href="ai.html" class="ai-popup-cta">Chat with EJ.Ai →</a>
+      </div>
+      <!-- Main button -->
+      <button class="ai-button" id="aiButton" aria-label="Open EJ.Ai Chat">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" width="30" height="30" aria-hidden="true">
+          <!-- Robot head -->
+          <rect x="14" y="18" width="36" height="26" rx="7" fill="white" />
+          <!-- Eyes -->
+          <circle cx="24" cy="30" r="4" fill="#9B1C31" />
+          <circle cx="40" cy="30" r="4" fill="#9B1C31" />
+          <!-- Mouth -->
+          <rect x="22" y="37" width="20" height="3" rx="1.5" fill="#9B1C31" />
+          <!-- Antenna -->
+          <rect x="30" y="10" width="4" height="8" rx="2" fill="white" />
+          <circle cx="32" cy="9" r="3" fill="white" />
+        </svg>
+      </button>
+    </div>
+
+    <style>
+      /* ===== Floating AI Widget ===== */
+      .floating-ai-widget {
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        z-index: 9990;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 12px;
+      }
+
+      /* -- Main button -- */
+      .ai-button {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        background: linear-gradient(135deg, #9B1C31 0%, #c0394e 50%, #7a1526 100%);
+        box-shadow:
+          0 4px 20px rgba(155, 28, 49, 0.55),
+          0 0 0 0 rgba(155, 28, 49, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        animation: ai-bounce-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+          ai-pulse 2.8s ease-in-out 1s infinite;
+        outline: none;
+        flex-shrink: 0;
+      }
+
+      .ai-button:hover {
+        transform: scale(1.1);
+        box-shadow:
+          0 6px 28px rgba(155, 28, 49, 0.7),
+          0 0 0 6px rgba(155, 28, 49, 0.15);
+        animation: none;
+      }
+
+      /* -- Popup message -- */
+      .ai-popup-message {
+        position: relative;
+        background: #1a1e24;
+        border: 1px solid rgba(155, 28, 49, 0.35);
+        border-radius: 14px;
+        padding: 14px 18px 14px 16px;
+        min-width: 210px;
+        max-width: 240px;
+        box-shadow:
+          0 8px 32px rgba(0, 0, 0, 0.5),
+          0 0 0 1px rgba(255, 255, 255, 0.06);
+        animation: ai-popup-appear 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        backdrop-filter: blur(6px);
+      }
+
+      .ai-popup-message::after {
+        content: '';
+        position: absolute;
+        bottom: -8px;
+        right: 22px;
+        width: 14px;
+        height: 14px;
+        background: #1a1e24;
+        border-right: 1px solid rgba(155, 28, 49, 0.35);
+        border-bottom: 1px solid rgba(155, 28, 49, 0.35);
+        transform: rotate(45deg);
+      }
+
+      .ai-popup-close {
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        font-size: 11px;
+        color: #a0a8b4;
+        cursor: pointer;
+        line-height: 1;
+        padding: 2px 4px;
+        border-radius: 4px;
+        transition: color 0.2s, background 0.2s;
+      }
+
+      .ai-popup-close:hover {
+        color: #fff;
+        background: rgba(155, 28, 49, 0.3);
+      }
+
+      .ai-popup-line1 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #eef2f5;
+        margin-bottom: 2px;
+        padding-right: 18px;
+      }
+
+      .ai-popup-line2 {
+        font-size: 0.83rem;
+        color: #a0a8b4;
+        margin-bottom: 10px;
+        line-height: 1.4;
+      }
+
+      .ai-popup-cta {
+        display: inline-block;
+        padding: 6px 14px;
+        background: linear-gradient(135deg, #9B1C31, #b22b40);
+        color: #fff;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background 0.2s, transform 0.2s;
+        box-shadow: 0 2px 10px rgba(155, 28, 49, 0.4);
+      }
+
+      .ai-popup-cta:hover {
+        background: linear-gradient(135deg, #b22b40, #c0394e);
+        transform: translateY(-1px);
+      }
+
+      /* -- Popup fade-out -- */
+      .ai-popup-message.ai-popup-hide {
+        animation: ai-popup-fade-out 0.6s ease forwards;
+      }
+
+      /* ===== Keyframes ===== */
+      @keyframes ai-bounce-in {
+        0% {
+          opacity: 0;
+          transform: translateY(80px) scale(0.6);
+        }
+
+        60% {
+          opacity: 1;
+          transform: translateY(-10px) scale(1.08);
+        }
+
+        80% {
+          transform: translateY(4px) scale(0.97);
+        }
+
+        100% {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes ai-pulse {
+
+        0%,
+        100% {
+          box-shadow: 0 4px 20px rgba(155, 28, 49, 0.55), 0 0 0 0 rgba(155, 28, 49, 0.4);
+        }
+
+        50% {
+          box-shadow: 0 4px 20px rgba(155, 28, 49, 0.55), 0 0 0 10px rgba(155, 28, 49, 0);
+        }
+      }
+
+      @keyframes ai-popup-appear {
+        0% {
+          opacity: 0;
+          transform: translateY(12px) scale(0.95);
+        }
+
+        100% {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes ai-popup-fade-out {
+        0% {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+
+        100% {
+          opacity: 0;
+          transform: translateY(8px) scale(0.96);
+          pointer-events: none;
+        }
+      }
+
+      /* -- Mobile -- */
+      @media (max-width: 768px) {
+        .floating-ai-widget {
+          display: none !important;
+        }
+      }
+    </style>
+
+    <script>
+      (function () {
+        var popup = document.getElementById('aiPopup');
+        var btn = document.getElementById('aiButton');
+        var closeX = document.getElementById('aiPopupClose');
+
+        // Only show popup once per browser session
+        if (!sessionStorage.getItem('ejaiPopupShown')) {
+          sessionStorage.setItem('ejaiPopupShown', '1');
+
+          // Auto-hide after 9 s
+          setTimeout(function () {
+            hidePopup();
+          }, 9000);
+        } else {
+          // Already seen — hide immediately without delay
+          popup.style.display = 'none';
+        }
+
+        function hidePopup() {
+          if (!popup || popup.style.display === 'none') return;
+          popup.classList.add('ai-popup-hide');
+          setTimeout(function () { popup.style.display = 'none'; }, 650);
+        }
+
+        // Manual close
+        closeX.addEventListener('click', function (e) {
+          e.stopPropagation();
+          hidePopup();
+        });
+
+        // Button click → navigate to ai.html
+        btn.addEventListener('click', function () {
+          window.location.href = 'ai.html';
+        });
+      })();
+    </script>
+
+    <script>
+        /* Hide footer inside Android WebView */
+        (function () {
+            var ua = navigator.userAgent || '';
+            if (ua.includes('wv') || ua.includes('Median')) {
+                var footer = document.getElementById('siteFooter');
+                if (footer) footer.style.display = 'none';
+            }
+        })();
+    </script>
+</body>
+
+</html>

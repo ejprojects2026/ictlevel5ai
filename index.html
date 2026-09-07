@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="assets/images/favicon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="VTA ICT Level 5 Community — 291+ past papers, community notes, and E.J.AI, your AI study assistant. The complete VTA ICT Level 5 study hub.">
+  <title>VTA ICT L5 Community</title>
+  <!-- Inter font for premium typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/responsive.css">
+  <link rel="stylesheet" href="assets/css/animations.css">
+  <link rel="stylesheet" href="assets/css/home.css">
+  <style>
+    /* ============ HERO CTA — three EQUAL buttons, one system ============
+       Mobile-first: icon sits above the label, so all three stay in ONE
+       horizontal row down to 320px with FULL labels and non-tiny type.
+       From 621px up they become icon · label · arrow on a single line,
+       180–200px wide and 58px tall. Only the surface differs. */
+    .hero-cta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      width: 100%;
+      max-width: 620px;
+      margin-bottom: 2.4rem;
+    }
+
+    .hero-cta-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      min-width: 0;
+      min-height: 54px;
+      padding: 8px 4px;
+      box-sizing: border-box;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      color: var(--text-color);
+      font-family: inherit;
+      font-size: clamp(12px, 3.4vw, 15px);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: 0.01em;
+      text-align: center;
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+      transition:
+        transform var(--transition-fast),
+        box-shadow var(--transition-fast),
+        background var(--transition-fast),
+        border-color var(--transition-fast);
+    }
+
+    .hero-cta-item .hci-ico {
+      flex: 0 0 auto;
+      font-size: clamp(15px, 4.2vw, 19px);
+      line-height: 1;
+    }
+
+    .hero-cta-item .hci-label {
+      min-width: 0;
+    }
+
+    .hero-cta-item .hci-arrow {
+      display: none;
+      flex: 0 0 auto;
+      font-size: 13px;
+      line-height: 1;
+    }
+
+    /* 1 · Past Papers — filled crimson primary */
+    .hero-cta-item--primary {
+      background: linear-gradient(135deg, #9b1c31 0%, #c0394e 100%);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1) inset, 0 4px 14px rgba(155, 28, 49, 0.35);
+    }
+
+    .hero-cta-item--primary:hover {
+      background: linear-gradient(135deg, #a82234 0%, #cc4257 100%);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset, 0 6px 20px rgba(155, 28, 49, 0.5);
+    }
+
+    /* 2 · AI Teacher — dark surface + crimson border */
+    .hero-cta-item--ai {
+      background: rgba(155, 28, 49, 0.12);
+      border-color: rgba(155, 28, 49, 0.5);
+    }
+
+    .hero-cta-item--ai:hover {
+      background: rgba(155, 28, 49, 0.2);
+      border-color: var(--primary-bright);
+      box-shadow: 0 4px 14px rgba(155, 28, 49, 0.25);
+    }
+
+    .hero-cta-item--ai .hci-arrow {
+      color: var(--primary-bright);
+    }
+
+    /* 3 · Notes — dark surface + subtle neutral border */
+    .hero-cta-item--notes {
+      background: var(--card-solid);
+      border-color: var(--border-color);
+    }
+
+    .hero-cta-item--notes:hover {
+      background: var(--bg-secondary);
+      border-color: rgba(155, 28, 49, 0.35);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    }
+
+    .hero-cta-item--notes .hci-arrow {
+      opacity: 0.6;
+    }
+
+    /* Shared states — after the variants so they win */
+    .hero-cta-item:hover {
+      transform: translateY(-2px);
+    }
+
+    .hero-cta-item:active {
+      transform: translateY(0);
+    }
+
+    .hero-cta-item:focus-visible {
+      outline: 2px solid var(--primary-bright);
+      outline-offset: 3px;
+    }
+
+    .hero-stats .num.stat-free {
+      opacity: 0;
+      transform: scale(0.8);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .hero-stats .num.stat-free.is-visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .hero-stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    @media (min-width: 640px) {
+      .hero-stats {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+    }
+
+    /* ≥621px: single-line layout — icon · label · arrow, 58px tall.
+       Type/padding stay tight enough that the label never has to shrink
+       in the 981–1199px band, where the hero column is at its narrowest. */
+    @media (min-width: 621px) {
+      .hero-cta-item {
+        flex-direction: row;
+        gap: 6px;
+        min-height: 58px;
+        padding: 8px 10px;
+        font-size: 14px;
+      }
+
+      .hero-cta-item .hci-ico {
+        font-size: 17px;
+      }
+
+      .hero-cta-item .hci-arrow {
+        display: inline-block;
+        font-size: 12px;
+      }
+    }
+
+    /* ≥1200px: hero column is at full width — a little more air and type */
+    @media (min-width: 1200px) {
+      .hero-cta-item {
+        gap: 8px;
+        padding: 8px 14px;
+        font-size: 15px;
+      }
+
+      .hero-cta-item .hci-ico {
+        font-size: 19px;
+      }
+
+      .hero-cta-item .hci-arrow {
+        font-size: 13px;
+      }
+    }
+
+    /* ≤620px: keep the existing mobile hero rhythm */
+    @media (max-width: 620px) {
+      .hero-cta {
+        margin-bottom: 2rem;
+      }
+    }
+
+    /* ≤340px: trim the gaps, never the label */
+    @media (max-width: 340px) {
+      .hero-cta {
+        gap: 6px;
+      }
+
+      .hero-cta-item {
+        padding: 8px 2px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container">
+      <div class="logo">VTA ICT L5 Community</div>
+      <button class="mobile-menu-btn" aria-label="Menu" aria-expanded="false">☰</button>
+      <div class="nav-menu">
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="lesson.html">Notes</a></li>
+          <li><a href="papers.html">Papers</a></li>
+          <li><a href="teacher.html">AI Teacher</a></li>
+          <li><a href="posts.html">Community</a></li>
+        </ul>
+        <div class="nav-buttons">
+          <a href="upload.html" class="btn btn-outline">Add Notes</a>
+          <button id="theme-toggle" class="btn" aria-label="Toggle theme">☀️</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+  <main>
+    <!-- ============ HERO ============ -->
+    <section class="home-hero">
+      <div class="container">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <h1 class="hero-title"><span class="ht-line">Your Complete</span> <span class="ht-line">VTA ICT Level&nbsp;5</span> <span class="accent">Study Platform</span></h1>
+            <p class="hero-sub">Past papers, notes, and E.J.AI — everything you need for your VTA ICT Level 5 journey.</p>
+            <div class="hero-cta">
+              <a href="papers.html" class="hero-cta-item hero-cta-item--primary">
+                <span class="hci-ico" aria-hidden="true">📄</span>
+                <span class="hci-label">Past Papers</span>
+                <span class="hci-arrow" aria-hidden="true">→</span>
+              </a>
+              <a href="teacher.html" class="hero-cta-item hero-cta-item--ai">
+                <span class="hci-ico" aria-hidden="true">🤖</span>
+                <span class="hci-label">AI Teacher</span>
+                <span class="hci-arrow" aria-hidden="true">→</span>
+              </a>
+              <a href="lesson.html" class="hero-cta-item hero-cta-item--notes">
+                <span class="hci-ico" aria-hidden="true">📚</span>
+                <span class="hci-label">Notes</span>
+                <span class="hci-arrow" aria-hidden="true">→</span>
+              </a>
+            </div>
+            <div class="hero-stats">
+              <div class="hero-stat">
+                <span class="num">291+</span>
+                <span class="label">Past Papers<br>&amp; Answers</span>
+              </div>
+              <div class="hero-stat">
+                <span class="num">9</span>
+                <span class="label">ICT<br>Subjects</span>
+              </div>
+              <div class="hero-stat">
+                <span class="num">24/7</span>
+                <span class="label">AI Study<br>Assistant</span>
+              </div>
+              <div class="hero-stat">
+                <span class="num">Free</span>
+                <span class="label">Student<br>Community</span>
+              </div>
+            </div>
+          </div>
+          <div class="hero-preview" aria-hidden="true">
+            <div class="preview-window">
+              <div class="preview-titlebar">
+                <span class="preview-dots"><i></i><i></i><i></i></span>
+                <span class="preview-url">vta-ict-l5.community</span>
+              </div>
+              <div class="preview-body">
+                <div class="preview-tabs">
+                  <span class="preview-tab is-active">Papers</span>
+                  <span class="preview-tab">E.J.AI</span>
+                  <span class="preview-tab">Lessons</span>
+                  <span class="preview-tab">Community</span>
+                </div>
+                <div class="preview-row">
+                  <span class="r-ico">📄</span>
+                  <span class="r-main">
+                    <span class="r-title">Past Papers Archive</span>
+                    <span class="r-sub">291+ papers &amp; answers</span>
+                  </span>
+                  <span class="r-badge">2010–25</span>
+                </div>
+                <div class="preview-row">
+                  <span class="r-ico">🤖</span>
+                  <span class="r-main">
+                    <span class="r-title">E.J.AI Study Assistant</span>
+                    <span class="r-sub">Explain, fix &amp; summarize</span>
+                  </span>
+                  <span class="r-badge">24/7</span>
+                </div>
+                <div class="preview-row">
+                  <span class="r-ico">📚</span>
+                  <span class="r-main">
+                    <span class="r-title">Lessons &amp; Notes</span>
+                    <span class="r-sub">Shared by the community</span>
+                  </span>
+                  <span class="r-badge">9 subj</span>
+                </div>
+                <div class="preview-row">
+                  <span class="r-ico">💬</span>
+                  <span class="r-main">
+                    <span class="r-title">Student Community</span>
+                    <span class="r-sub">Ask, answer &amp; discuss</span>
+                  </span>
+                  <span class="r-badge">Live</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- Android App Icon -->
+    <div class="android-app-wrapper" id="androidAppWrapper">
+      <div class="android-icon-container" id="androidIconBtn" onclick="window.location.href='download.html'"
+        title="Get the Android App">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="30" height="30" aria-hidden="true">
+          <!-- Android robot body -->
+          <rect x="10" y="20" width="28" height="20" rx="4" fill="white" />
+          <!-- Head -->
+          <path d="M14 20 Q14 12 24 12 Q34 12 34 20Z" fill="white" />
+          <!-- Eyes -->
+          <circle cx="19" cy="17" r="2" fill="#3ddc84" />
+          <circle cx="29" cy="17" r="2" fill="#3ddc84" />
+          <!-- Antennas -->
+          <line x1="17" y1="12" x2="13" y2="7" stroke="white" stroke-width="2" stroke-linecap="round" />
+          <line x1="31" y1="12" x2="35" y2="7" stroke="white" stroke-width="2" stroke-linecap="round" />
+          <!-- Arms -->
+          <rect x="4" y="22" width="5" height="14" rx="2.5" fill="white" />
+          <rect x="39" y="22" width="5" height="14" rx="2.5" fill="white" />
+          <!-- Legs -->
+          <rect x="14" y="40" width="6" height="6" rx="3" fill="white" />
+          <rect x="28" y="40" width="6" height="6" rx="3" fill="white" />
+          <!-- Belt line -->
+          <rect x="10" y="29" width="28" height="1.5" rx="0.75" fill="rgba(0,0,0,0.15)" />
+        </svg>
+      </div>
+      <div class="android-install-msg" id="androidInstallMsg">Get the Android app 🚀</div>
+    </div>
+    <!-- ============ MEET YOUR AI TEACHER ============ -->
+    <section class="home-section alt reveal" id="ai-teacher-promo">
+      <div class="container">
+        <div class="tpromo-grid">
+          <!-- LEFT · premium AI Teacher classroom card (a live-class dashboard, NOT a chat) -->
+          <div class="tclass-card" aria-hidden="true">
+            <div class="tclass-glow"></div>
+            <div class="tclass-head">
+              <span class="tclass-avatar">👨‍🏫</span>
+              <span class="tclass-id">
+                <span class="tclass-name">E.J.AI</span>
+                <span class="tclass-role">Your ICT Level 5 Teacher</span>
+              </span>
+              <span class="tclass-live"><span class="tclass-live-dot"></span> Live class</span>
+            </div>
+            <div class="tclass-body">
+              <div class="tclass-now">
+                <span class="tclass-label">Now teaching</span>
+                <span class="tclass-lesson">📘 CSS Selectors</span>
+              </div>
+              <div class="tclass-progress">
+                <div class="tclass-bar"><span style="width:62%"></span></div>
+                <div class="tclass-progress-meta">
+                  <span>Lesson progress</span>
+                  <span class="tclass-qn">Question 3 of 7</span>
+                </div>
+              </div>
+              <div class="tclass-feedback">
+                <span class="tclass-check">✅</span>
+                <span><strong>Correct!</strong> A class selector targets elements by their <code>class</code>.</span>
+              </div>
+              <div class="tclass-stats">
+                <div class="tclass-stat">
+                  <span class="tclass-stat-label">Concept mastery</span>
+                  <span class="tclass-stat-val">74<span>%</span></span>
+                </div>
+                <div class="tclass-stat tclass-stat-score">
+                  <span class="tclass-stat-label">Final score</span>
+                  <span class="tclass-stat-val">86<span>%</span></span>
+                </div>
+              </div>
+            </div>
+            <div class="tclass-flow">
+              <span class="tclass-step">Lesson</span><span class="tclass-arrow">→</span>
+              <span class="tclass-step">Teach</span><span class="tclass-arrow">→</span>
+              <span class="tclass-step">Question</span><span class="tclass-arrow">→</span>
+              <span class="tclass-step">Answer</span><span class="tclass-arrow">→</span>
+              <span class="tclass-step">Feedback</span><span class="tclass-arrow">→</span>
+              <span class="tclass-step tclass-step-score">Score</span>
+            </div>
+          </div>
+          <!-- RIGHT · headline, explanation of the flow, benefits, CTA -->
+          <div class="ejai-copy tpromo-copy">
+            <p class="section-eyebrow">Meet your AI Teacher</p>
+            <h2 class="section-title">E.J.AI doesn't just answer questions. <span class="tp-accent">It teaches you.</span></h2>
+            <p class="section-sub">Choose a lesson and E.J.AI runs a live class: it <strong>teaches</strong> the topic, <strong>asks you questions</strong>, <strong>checks your answers</strong>, gives instant <strong>feedback</strong> and hands you a <strong>final score</strong> — a patient teacher that never runs out of time.</p>
+            <ul class="ejai-caps">
+              <li><span class="cap-ico">👨‍🏫</span><span><strong>Guided lessons</strong> — E.J.AI teaches each concept step by step, not just one-off answers.</span></li>
+              <li><span class="cap-ico">🎙️</span><span><strong>Speaks &amp; listens</strong> — hear the class out loud and reply by voice or text.</span></li>
+              <li><span class="cap-ico">🏆</span><span><strong>Feedback &amp; a score</strong> — corrected in real time, then a results report with your accuracy.</span></li>
+            </ul>
+            <a href="teacher.html" class="btn btn-primary">Start an AI Class&nbsp;→</a>
+            <p class="tp-modes">Two ways to learn with E.J.AI —
+              <a href="teacher.html"><strong>Teacher</strong> (guided class)</a> ·
+              <a href="ai.html"><strong>Assistant</strong> (ask anything)</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ============ MEET E.J.AI ============ -->
+    <section class="home-section reveal" id="ejai">
+      <div class="container">
+        <div class="ejai-grid">
+          <div class="ejai-copy">
+            <p class="section-eyebrow">Meet E.J.AI</p>
+            <h2 class="section-title">Your personal ICT study assistant</h2>
+            <p class="section-sub">E.J.AI is built into the platform to help you understand tough concepts, debug your code, and study smarter — any time of day.</p>
+            <ul class="ejai-caps">
+              <li><span class="cap-ico">💻</span><span><strong>Explain &amp; debug code</strong> — paste Java, Python, SQL or web code and get clear, step-by-step help.</span></li>
+              <li><span class="cap-ico">📝</span><span><strong>Summarize notes</strong> — turn long notes into concise, exam-ready summaries.</span></li>
+              <li><span class="cap-ico">🗺️</span><span><strong>Build a roadmap</strong> — get a focused learning path for any ICT topic.</span></li>
+              <li><span class="cap-ico">📚</span><span><strong>ICT-focused answers</strong> — programming, databases, networking &amp; more.</span></li>
+            </ul>
+            <a href="ai.html" class="btn btn-primary">Ask E.J.AI&nbsp;→</a>
+          </div>
+          <div class="ejai-chat" aria-hidden="true">
+            <div class="ejai-chat-head">
+              <span class="ejai-avatar">🤖</span>
+              <span>
+                <span class="who">E.J.AI</span><br>
+                <span class="status">Online</span>
+              </span>
+            </div>
+            <div class="ejai-chat-body">
+              <div class="chat-msg user"><div class="chat-bubble">What is database normalization?</div></div>
+              <div class="chat-msg ai"><div class="chat-bubble">Normalization organizes tables to reduce redundancy. It moves through normal forms: 1NF removes repeating groups, 2NF removes partial dependencies, 3NF removes transitive ones. Want a worked example? 📊</div></div>
+              <div class="chat-msg user"><div class="chat-bubble">Fix my loop: <code>for i in range(len(a)): print(a[i+1])</code></div></div>
+              <div class="chat-msg ai"><div class="chat-bubble">That throws an IndexError on the last item. Loop to <code>len(a)-1</code>, or just iterate directly: <code>for x in a: print(x)</code> ✅</div></div>
+              <div class="chat-msg ai"><div class="chat-bubble"><span class="chat-typing"><i></i><i></i><i></i></span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ============ PRACTICE WITH PAST PAPERS ============ -->
+    <section class="home-section alt reveal" id="papers">
+      <div class="container">
+        <div class="section-head">
+          <p class="section-eyebrow">Practice With Past Papers</p>
+          <h2 class="section-title">Search 291+ real exam papers</h2>
+          <p class="section-sub">Filter by subject, year and semester to find exactly what you need — question papers, answers and model papers from 2010 to 2025.</p>
+        </div>
+        <div class="papers-preview">
+          <div class="pp-searchbar">
+            <span class="ico">🔍</span>
+            <span>Search papers</span><span class="cursor"></span>
+          </div>
+          <div class="pp-filters">
+            <span class="pp-chip is-active">All Subjects <span class="caret">▾</span></span>
+            <span class="pp-chip">Year <span class="caret">▾</span></span>
+            <span class="pp-chip">Semester <span class="caret">▾</span></span>
+            <span class="pp-chip">Papers</span>
+            <span class="pp-chip">Answers</span>
+          </div>
+          <div class="pp-results">
+            <div class="pp-result">
+              <span class="pp-ico">📄</span>
+              <span class="pp-info">
+                <span class="pp-title">Web Programming</span>
+                <span class="pp-meta"><span>Web Development</span><span>•</span><span>Question Paper</span></span>
+              </span>
+              <span class="pp-year">2025</span>
+            </div>
+            <div class="pp-result">
+              <span class="pp-ico">📄</span>
+              <span class="pp-info">
+                <span class="pp-title">Database Systems II</span>
+                <span class="pp-meta"><span>Database Systems</span><span>•</span><span>Question Paper</span></span>
+              </span>
+              <span class="pp-year">2025</span>
+            </div>
+            <div class="pp-result">
+              <span class="pp-ico">📄</span>
+              <span class="pp-info">
+                <span class="pp-title">Local Area Networks</span>
+                <span class="pp-meta"><span>Networking</span><span>•</span><span>Question Paper</span></span>
+              </span>
+              <span class="pp-year">2025</span>
+            </div>
+            <div class="pp-result">
+              <span class="pp-ico">📄</span>
+              <span class="pp-info">
+                <span class="pp-title">Software Testing</span>
+                <span class="pp-meta"><span>Software Testing</span><span>•</span><span>Question Paper</span></span>
+              </span>
+              <span class="pp-year">2025</span>
+            </div>
+          </div>
+          <div class="pp-cta">
+            <a href="papers.html" class="btn btn-primary">Browse All Papers&nbsp;→</a>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ============ SUBJECTS / LESSONS ============ -->
+    <section class="home-section reveal" id="lessons">
+      <div class="container">
+        <div class="section-head">
+          <p class="section-eyebrow">Explore Subjects</p>
+          <h2 class="section-title">Notes across all 9 ICT subjects</h2>
+          <p class="section-sub">Jump straight into community-shared lessons and notes for every subject in the VTA ICT Level 5 syllabus.</p>
+        </div>
+        <div class="grid lessons-grid subjects-grid">
+          <a class="card subject-card" href="lesson.html?topic=Programming">
+            <span class="subject-ico">🖥️</span>
+            <h3 class="subject-name">Programming</h3>
+            <p class="subject-desc">Java / Python fundamentals, algorithms, flowcharts, debugging, and software development basics.</p>
+            <span class="subject-go">Open Lessons →</span>
+          </a>
+          <a class="card subject-card" href="lesson.html?topic=Database%20Systems">
+            <span class="subject-ico">🗄️</span>
+            <h3 class="subject-name">Database Systems</h3>
+            <p class="subject-desc">DBMS concepts, ER diagrams, normalization, SQL queries, and database design.</p>
+            <span class="subject-go">Open Lessons →</span>
+          </a>
+          <a class="card subject-card" href="lesson.html?topic=Networking">
+            <span class="subject-ico">🌐</span>
+            <h3 class="subject-name">Networking (LAN)</h3>
+            <p class="subject-desc">OSI model, network devices, IP addressing, subnetting, and LAN configuration.</p>
+            <span class="subject-go">Open Lessons →</span>
+          </a>
+          <a class="card subject-card" href="lesson.html?topic=Web%20Development">
+            <span class="subject-ico">💻</span>
+            <h3 class="subject-name">Web Development</h3>
+            <p class="subject-desc">HTML, CSS, JavaScript, responsive design, and website deployment.</p>
+            <span class="subject-go">Open Lessons →</span>
+          </a>
+          <a class="card subject-card" href="lesson.html?topic=System%20Analysis">
+            <span class="subject-ico">📊</span>
+            <h3 class="subject-name">System Analysis &amp; Design</h3>
+            <p class="subject-desc">Requirements engineering, UML diagrams, SDLC models, and system planning.</p>
+            <span class="subject-go">Open Lessons →</span>
+          </a>
+          <a class="card subject-card" href="lesson.html?topic=Software%20Testing">
+            <span class="subject-ico">🧪</span>
+            <h3 class="subject-name">Software Testing</h3>
+            <p class="subject-desc">Testing methods, debugging, quality assurance, and test case design.</p>
+            <span class="subject-go">Open Lessons →</span>
+          </a>
+          <a class="card subject-card" href="lesson.html?topic=Graphic%20Design">
+            <span class="subject-ico">🎨</span>
+            <h3 class="subject-name">Graphic Design</h3>
+            <p class="subject-desc">Design principles, color theory, image editing, vector graphics, and digital media.</p>
+            <span class="subject-go">Open Lessons →</span>
+          </a>
+          <a class="card subject-card" href="lesson.html?topic=Workplace%20Communication">
+            <span class="subject-ico">🗣️</span>
+            <h3 class="subject-name">Workplace Communication</h3>
+            <p class="subject-desc">Reports, presentations, meetings, and professional communication skills.</p>
+            <span class="subject-go">Open Lessons →</span>
+          </a>
+          <a class="card subject-card" href="lesson.html?topic=Information%20Management">
+            <span class="subject-ico">📁</span>
+            <h3 class="subject-name">Information Management</h3>
+            <p class="subject-desc">Data handling, documentation systems, and workplace information management.</p>
+            <span class="subject-go">Open Lessons →</span>
+          </a>
+        </div>
+      </div>
+    </section>
+    <!-- ============ QUICK STUDY ACTIONS ============ -->
+    <section class="home-section alt reveal" id="study">
+      <div class="container">
+        <div class="section-head">
+          <p class="section-eyebrow">Quick Study Actions</p>
+          <h2 class="section-title">What do you want to study today?</h2>
+          <p class="section-sub">Pick a starting point and jump straight in — every action takes you to a real part of the platform.</p>
+        </div>
+        <div class="action-grid">
+          <a class="action-card" href="papers.html">
+            <span class="a-ico">📄</span>
+            <span class="a-text">
+              <span class="a-title">Find a Past Paper</span>
+              <span class="a-sub">Search 291+ papers</span>
+            </span>
+            <span class="a-arrow">→</span>
+          </a>
+          <a class="action-card" href="ai.html">
+            <span class="a-ico">🤖</span>
+            <span class="a-text">
+              <span class="a-title">Ask E.J.AI</span>
+              <span class="a-sub">Instant study help</span>
+            </span>
+            <span class="a-arrow">→</span>
+          </a>
+          <a class="action-card" href="lesson.html">
+            <span class="a-ico">📚</span>
+            <span class="a-text">
+              <span class="a-title">Explore Lessons</span>
+              <span class="a-sub">Browse shared notes</span>
+            </span>
+            <span class="a-arrow">→</span>
+          </a>
+          <a class="action-card" href="posts.html">
+            <span class="a-ico">💬</span>
+            <span class="a-text">
+              <span class="a-title">Ask the Community</span>
+              <span class="a-sub">Post a question</span>
+            </span>
+            <span class="a-arrow">→</span>
+          </a>
+          <a class="action-card" href="upload.html">
+            <span class="a-ico">⬆️</span>
+            <span class="a-text">
+              <span class="a-title">Add Your Notes</span>
+              <span class="a-sub">Share &amp; help peers</span>
+            </span>
+            <span class="a-arrow">→</span>
+          </a>
+        </div>
+      </div>
+    </section>
+    <!-- ============ COMMUNITY — LEARN TOGETHER ============ -->
+    <section class="home-section reveal" id="community">
+      <div class="container">
+        <div class="community-panel">
+          <div class="community-info">
+            <p class="section-eyebrow">Learn Together</p>
+            <h2 class="section-title">You're not studying alone</h2>
+            <p class="section-sub">The VTA ICT Level 5 community shares notes, answers questions, and helps each other prepare — right here on the platform.</p>
+            <ul class="community-points">
+              <li>
+                <span class="cp-ico">💬</span>
+                <span>
+                  <span class="cp-title">Ask &amp; answer questions</span>
+                  <span class="cp-sub">Stuck on a concept? Post it and get help from fellow students.</span>
+                </span>
+              </li>
+              <li>
+                <span class="cp-ico">📤</span>
+                <span>
+                  <span class="cp-title">Share your notes</span>
+                  <span class="cp-sub">Upload your own notes and build the shared library for everyone.</span>
+                </span>
+              </li>
+              <li>
+                <span class="cp-ico">🤝</span>
+                <span>
+                  <span class="cp-title">Grow with peers</span>
+                  <span class="cp-sub">Collaborate on tricky topics and prepare for exams together.</span>
+                </span>
+              </li>
+            </ul>
+          </div>
+          <div class="community-cta">
+            <div class="student-group" aria-hidden="true">
+              <span class="sg-avatar">👩🏽‍🎓</span>
+              <span class="sg-avatar">👨🏾‍💻</span>
+              <span class="sg-avatar">🧑🏻‍🎓</span>
+              <span class="sg-avatar">👩🏼‍💻</span>
+              <span class="sg-avatar">👨🏿‍🎓</span>
+            </div>
+            <p class="sg-caption">Students helping students, every day.</p>
+            <a href="posts.html" class="btn btn-primary">Join the Community&nbsp;→</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FINAL CTA ============ -->
+    <section class="final-cta reveal">
+      <div class="container">
+        <div class="cta-panel">
+          <h2>Start acing VTA ICT Level 5 today</h2>
+          <p>Past papers, notes, community and E.J.AI — everything you need to study smarter, all in one free platform.</p>
+          <div class="cta-actions">
+            <a href="papers.html" class="btn btn-primary">Browse Past Papers&nbsp;→</a>
+            <a href="ai.html" class="btn btn-outline">Ask E.J.AI&nbsp;→</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer home-footer" id="siteFooter">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="fb-logo">🎓 VTA ICT L5</div>
+          <p>The complete study platform for VTA ICT Level 5 students — past papers, community notes and E.J.AI, your AI study assistant.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Study</h4>
+          <ul>
+            <li><a href="papers.html">Past Papers</a></li>
+            <li><a href="lesson.html">Lessons &amp; Notes</a></li>
+            <li><a href="ai.html">E.J.AI Assistant</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Community</h4>
+          <ul>
+            <li><a href="posts.html">Discussion</a></li>
+            <li><a href="upload.html">Add Notes</a></li>
+            <li><a href="download.html">Android App</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>About</h4>
+          <ul>
+            <li><a href="about.html">About Us</a></li>
+            <li><a href="index.html">Home</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 VTA ICT L5 Community. All rights reserved. — Academic excellence through collaboration.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/js/ui.js"></script>
+  <!-- ===== Floating EJ.Ai Widget ===== -->
+  <div class="floating-ai-widget" id="floatingAiWidget">
+    <!-- Popup message -->
+    <div class="ai-popup-message" id="aiPopup">
+      <span class="ai-popup-close" id="aiPopupClose" aria-label="Close">✕</span>
+      <p class="ai-popup-line1">Hello 👋</p>
+      <p class="ai-popup-line2">Need help with ICT or coding?</p>
+      <a href="ai.html" class="ai-popup-cta">Chat with EJ.Ai →</a>
+    </div>
+    <!-- Main button -->
+    <button class="ai-button" id="aiButton" aria-label="Open EJ.Ai Chat">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" width="30" height="30" aria-hidden="true">
+        <!-- Robot head -->
+        <rect x="14" y="18" width="36" height="26" rx="7" fill="white" />
+        <!-- Eyes -->
+        <circle cx="24" cy="30" r="4" fill="#9B1C31" />
+        <circle cx="40" cy="30" r="4" fill="#9B1C31" />
+        <!-- Mouth -->
+        <rect x="22" y="37" width="20" height="3" rx="1.5" fill="#9B1C31" />
+        <!-- Antenna -->
+        <rect x="30" y="10" width="4" height="8" rx="2" fill="white" />
+        <circle cx="32" cy="9" r="3" fill="white" />
+      </svg>
+    </button>
+  </div>
+  <style>
+    /* ===== Floating AI Widget ===== */
+    .floating-ai-widget {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      z-index: 9990;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 12px;
+    }
+
+    /* -- Main button -- */
+    .ai-button {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(135deg, #9B1C31 0%, #c0394e 50%, #7a1526 100%);
+      box-shadow:
+        0 4px 20px rgba(155, 28, 49, 0.55),
+        0 0 0 0 rgba(155, 28, 49, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      animation: ai-bounce-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+        ai-pulse 2.8s ease-in-out 1s infinite;
+      outline: none;
+      flex-shrink: 0;
+    }
+
+    .ai-button:hover {
+      transform: scale(1.1);
+      box-shadow:
+        0 6px 28px rgba(155, 28, 49, 0.7),
+        0 0 0 6px rgba(155, 28, 49, 0.15);
+      animation: none;
+    }
+    /* -- Popup message -- */
+    .ai-popup-message {
+      position: relative;
+      background: #1a1e24;
+      border: 1px solid rgba(155, 28, 49, 0.35);
+      border-radius: 14px;
+      padding: 14px 18px 14px 16px;
+      min-width: 210px;
+      max-width: 240px;
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.06);
+      animation: ai-popup-appear 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      backdrop-filter: blur(6px);
+    }
+
+    .ai-popup-message::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      right: 22px;
+      width: 14px;
+      height: 14px;
+      background: #1a1e24;
+      border-right: 1px solid rgba(155, 28, 49, 0.35);
+      border-bottom: 1px solid rgba(155, 28, 49, 0.35);
+      transform: rotate(45deg);
+    }
+
+    .ai-popup-close {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      font-size: 11px;
+      color: #a0a8b4;
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .ai-popup-close:hover {
+      color: #fff;
+      background: rgba(155, 28, 49, 0.3);
+    }
+
+    .ai-popup-line1 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #eef2f5;
+      margin-bottom: 2px;
+      padding-right: 18px;
+    }
+
+    .ai-popup-line2 {
+      font-size: 0.83rem;
+      color: #a0a8b4;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    .ai-popup-cta {
+      display: inline-block;
+      padding: 6px 14px;
+      background: linear-gradient(135deg, #9B1C31, #b22b40);
+      color: #fff;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.2s;
+      box-shadow: 0 2px 10px rgba(155, 28, 49, 0.4);
+    }
+
+    .ai-popup-cta:hover {
+      background: linear-gradient(135deg, #b22b40, #c0394e);
+      transform: translateY(-1px);
+    }
+
+    /* -- Popup fade-out -- */
+    .ai-popup-message.ai-popup-hide {
+      animation: ai-popup-fade-out 0.6s ease forwards;
+    }
+
+    /* ===== Keyframes ===== */
+    @keyframes ai-bounce-in {
+      0% {
+        opacity: 0;
+        transform: translateY(80px) scale(0.6);
+      }
+
+      60% {
+        opacity: 1;
+        transform: translateY(-10px) scale(1.08);
+      }
+
+      80% {
+        transform: translateY(4px) scale(0.97);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes ai-pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 4px 20px rgba(155, 28, 49, 0.55), 0 0 0 0 rgba(155, 28, 49, 0.4);
+      }
+
+      50% {
+        box-shadow: 0 4px 20px rgba(155, 28, 49, 0.55), 0 0 0 10px rgba(155, 28, 49, 0);
+      }
+    }
+
+    @keyframes ai-popup-appear {
+      0% {
+        opacity: 0;
+        transform: translateY(12px) scale(0.95);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes ai-popup-fade-out {
+      0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translateY(8px) scale(0.96);
+        pointer-events: none;
+      }
+    }
+
+    /* -- Mobile -- */
+    @media (max-width: 480px) {
+      .floating-ai-widget {
+        bottom: 18px;
+        right: 16px;
+      }
+
+      .ai-popup-message {
+        min-width: 185px;
+        max-width: 210px;
+        padding: 12px 14px 12px 13px;
+      }
+    }
+  </style>
+  <!-- ===== Android App Icon ===== -->
+  <style>
+    .android-app-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 0 0 32px;
+      margin-bottom: 8px;
+      position: relative;
+    }
+
+    .android-icon-container {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2a9e55 0%, #3ddc84 60%, #1e7a40 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      box-shadow:
+        0 4px 18px rgba(61, 220, 132, 0.45),
+        0 0 0 0 rgba(61, 220, 132, 0.35);
+      transition: transform 0.22s ease, box-shadow 0.22s ease;
+      animation: android-pulse 3s ease-in-out 2s infinite;
+    }
+
+    .android-icon-container:hover {
+      transform: scale(1.12);
+      box-shadow:
+        0 6px 28px rgba(61, 220, 132, 0.65),
+        0 0 0 8px rgba(61, 220, 132, 0.12);
+      animation: none;
+    }
+
+    .android-install-msg {
+      background: #1a1e24;
+      border: 1px solid rgba(61, 220, 132, 0.35);
+      color: #eef2f5;
+      font-size: 0.84rem;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 20px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      white-space: nowrap;
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .android-install-msg.android-msg-show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    @keyframes android-pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 4px 18px rgba(61, 220, 132, 0.45), 0 0 0 0 rgba(61, 220, 132, 0.35);
+      }
+
+      50% {
+        box-shadow: 0 4px 18px rgba(61, 220, 132, 0.45), 0 0 0 10px rgba(61, 220, 132, 0);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .android-app-wrapper {
+        padding-left: 18px;
+      }
+
+      .android-icon-container {
+        width: 50px;
+        height: 50px;
+      }
+    }
+  </style>
+
+  <!-- ===== Popup / App scripts ===== -->
+  <script>
+    (function () {
+      var popup = document.getElementById('aiPopup');
+      var btn = document.getElementById('aiButton');
+      var closeX = document.getElementById('aiPopupClose');
+
+      // Only show popup once per browser session
+      if (!sessionStorage.getItem('ejaiPopupShown')) {
+        sessionStorage.setItem('ejaiPopupShown', '1');
+
+        // Auto-hide after 9 s
+        setTimeout(function () {
+          hidePopup();
+        }, 9000);
+      } else {
+        // Already seen — hide immediately without delay
+        popup.style.display = 'none';
+      }
+
+      function hidePopup() {
+        if (!popup || popup.style.display === 'none') return;
+        popup.classList.add('ai-popup-hide');
+        setTimeout(function () { popup.style.display = 'none'; }, 650);
+      }
+
+      // Manual close
+      closeX.addEventListener('click', function (e) {
+        e.stopPropagation();
+        hidePopup();
+      });
+
+      // Button click → navigate to ai.html
+      btn.addEventListener('click', function () {
+        window.location.href = 'ai.html';
+      });
+    })();
+  </script>
+  <script>
+    /* ===== Android App Icon Logic ===== */
+    (function () {
+      var ua = navigator.userAgent || '';
+      var isAndroidApp = ua.includes('wv') || ua.includes('Median');
+      var wrapper = document.getElementById('androidAppWrapper');
+
+      if (isAndroidApp) {
+        // Inside the Android app — hide the install icon entirely
+        if (wrapper) wrapper.style.display = 'none';
+        return;
+      }
+
+      // Show tooltip after 1 second, keep visible for 12 seconds
+      var msg = document.getElementById('androidInstallMsg');
+
+      setTimeout(function () {
+        if (msg) {
+          msg.style.opacity = '1';
+          msg.style.transform = 'translateY(0)';
+        }
+      }, 1000);
+
+      setTimeout(function () {
+        if (msg) {
+          msg.style.opacity = '0';
+          msg.style.transform = 'translateY(10px)';
+        }
+      }, 13000);
+    })();
+  </script>
+
+  <script>
+    /* Hide footer inside Android WebView */
+    (function () {
+      var ua = navigator.userAgent || '';
+      if (ua.includes('wv') || ua.includes('Median')) {
+        var footer = document.getElementById('siteFooter');
+        if (footer) footer.style.display = 'none';
+      }
+    })();
+  </script>
+
+  <script>
+    /* Count hero stats once when the stats row enters the viewport. */
+    (function () {
+      var stats = document.querySelector('.hero-stats');
+      if (!stats) return;
+
+      var numbers = stats.querySelectorAll('.num');
+      var animations = [];
+
+      numbers.forEach(function (element) {
+        var value = element.textContent.trim();
+        if (value === 'Free') {
+          element.classList.add('stat-free');
+          animations.push(function () {
+            element.classList.add('is-visible');
+          });
+          return;
+        }
+
+        var match = value.match(/^(\d+)(.*)$/);
+        if (!match) return;
+
+        var target = Number(match[1]);
+        var suffix = match[2];
+        var duration = target === 291 ? 2000 : 1000;
+        element.textContent = '0';
+
+        animations.push(function () {
+          var start = performance.now();
+
+          function tick(now) {
+            var progress = Math.min((now - start) / duration, 1);
+            var eased = 1 - Math.pow(1 - progress, 3);
+            element.textContent = String(Math.round(target * eased));
+            if (progress < 1) {
+              requestAnimationFrame(tick);
+            } else {
+              element.textContent = String(target) + suffix;
+            }
+          }
+
+          requestAnimationFrame(tick);
+        });
+      });
+
+      var started = false;
+      function startAnimations() {
+        if (started) return;
+        started = true;
+        animations.forEach(function (animate) { animate(); });
+      }
+
+      if (!('IntersectionObserver' in window)) {
+        startAnimations();
+        return;
+      }
+
+      var observer = new IntersectionObserver(function (entries) {
+        if (entries.some(function (entry) { return entry.isIntersecting; })) {
+          observer.disconnect();
+          startAnimations();
+        }
+      }, { threshold: 0.25 });
+
+      observer.observe(stats);
+    })();
+  </script>
+</body>
+
+</html>

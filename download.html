@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="assets/images/favicon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Download ICT5 Android App - VTA ICT L5 Community</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/responsive.css">
+  <link rel="stylesheet" href="assets/css/animations.css">
+  <style>
+    /* ── APK Download CTA Button ── */
+    .apk-download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 1.1rem 2.8rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #ffffff;
+      background: linear-gradient(135deg, #e53935 0%, #b71c1c 100%);
+      border: none;
+      border-radius: 50px;
+      text-decoration: none;
+      cursor: pointer;
+      box-shadow: 0 0 24px rgba(229, 57, 53, 0.55), 0 6px 20px rgba(0, 0, 0, 0.3);
+      transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease;
+      letter-spacing: 0.02em;
+    }
+
+    .apk-download-btn:hover {
+      transform: scale(1.07);
+      box-shadow: 0 0 42px rgba(229, 57, 53, 0.8), 0 10px 30px rgba(0, 0, 0, 0.35);
+      filter: brightness(1.1);
+    }
+
+    .apk-download-btn:active {
+      transform: scale(0.98);
+      box-shadow: 0 0 16px rgba(229, 57, 53, 0.5);
+    }
+
+    .apk-trust-msg {
+      margin-top: 1rem;
+      font-size: 0.88rem;
+      color: var(--text-secondary, #888);
+      letter-spacing: 0.03em;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Navbar (exactly as in index.html) -->
+  <nav class="navbar">
+    <div class="container">
+      <div class="logo">VTA ICT L5 Community</div>
+      <button class="mobile-menu-btn" aria-label="Menu">☰</button>
+      <div class="nav-menu">
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="lesson.html">Notes</a></li>
+          <li><a href="papers.html">Papers</a></li>
+          <li><a href="teacher.html">AI Teacher</a></li>
+          <li><a href="posts.html">Community</a></li>
+        </ul>
+        <div class="nav-buttons">
+          <a href="upload.html" class="btn btn-outline">Add Notes</a>
+          <button id="theme-toggle" class="btn" aria-label="Toggle theme">☀️</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container">
+        <h1>Install ICT5 Android App</h1>
+        <p>Get faster access to the ICT Level 5 learning platform — right from your pocket.</p>
+        <p style="max-width: 700px; margin: 1rem auto 2rem;">
+          The app gives you quick access to the AI Study Assistant, ICT Notes Library, lessons, and community uploads,
+          all in a convenient mobile wrapper.
+        </p>
+      </div>
+    </section>
+
+    <!-- Main Download Button -->
+    <section class="section" style="text-align: center; padding-top: 0;">
+      <div class="container">
+        <a href="/ICT5.apk" class="apk-download-btn" download>
+          📱 Download ICT5 Android App
+        </a>
+        <p class="apk-trust-msg">
+          ✅ Safe APK &nbsp;•&nbsp; No special permissions required &nbsp;•&nbsp; Fast access to the ICT platform
+        </p>
+      </div>
+    </section>
+
+    <!-- App Features -->
+    <section class="section features">
+      <div class="container">
+        <h2>What’s inside the app</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>🤖 AI Study Assistant</h3>
+            <p>Get instant help with coding, assignments, and ICT concepts.</p>
+          </div>
+          <div class="card">
+            <h3>📚 ICT Notes Library</h3>
+            <p>Browse and search all uploaded notes from your peers.</p>
+          </div>
+          <div class="card">
+            <h3>📖 Lessons</h3>
+            <p>Access structured lessons on programming, databases, networking, and more.</p>
+          </div>
+          <div class="card">
+            <h3>📤 Community Uploads</h3>
+            <p>Share your own notes and resources directly from the app.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Installation Guide -->
+    <section class="section">
+      <div class="container">
+        <h2>Installation Guide</h2>
+        <div
+          style="background: var(--card-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-top: 1.5rem;">
+          <ol style="list-style: decimal; padding-left: 1.5rem; color: var(--text-secondary);">
+            <li><strong>Download the APK</strong> – Tap the big red button above.</li>
+            <li><strong>Open the file</strong> – Once downloaded, open it from your notifications or Downloads folder.
+            </li>
+            <li><strong>Tap “Install”</strong> – If Android asks for permission, allow installation from unknown sources
+              (see next step).</li>
+            <li><strong>Enable “Install unknown apps”</strong> – If blocked, go to Settings → Security → toggle on
+              “Allow from this source” for your browser or file manager.</li>
+            <li><strong>Open the app</strong> – After installation, tap “Open” and start learning.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- Security Information -->
+    <section class="section">
+      <div class="container">
+        <h2>Security Information</h2>
+        <div
+          style="background: var(--card-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-top: 1.5rem;">
+          <p style="margin-bottom: 1rem; font-weight: 600; color: var(--text-color);">This APK is safe to install:</p>
+          <ul style="list-style: disc; padding-left: 1.5rem; color: var(--text-secondary);">
+            <li>✅ Does NOT request camera access</li>
+            <li>✅ Does NOT request contacts access</li>
+            <li>✅ Does NOT access personal files</li>
+            <li>✅ Does NOT track users</li>
+          </ul>
+          <p style="margin-top: 1.5rem; color: var(--text-secondary);">
+            The app simply loads the official ICT L5 learning platform inside a mobile-friendly container for easier
+            access. No extra permissions, no data collection.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer (same as index.html) -->
+  <footer class="footer" id="siteFooter">
+    <div class="container">
+      <p>© 2026 VTA ICT L5 Community. All rights reserved.</p>
+      <p>VTA ICT Level 5 Community — Academic excellence through collaboration.</p>
+    </div>
+  </footer>
+
+  <script src="assets/js/ui.js"></script>
+  <!-- Optional: include theme toggle JS if needed -->
+  <script>
+    /* Hide footer inside Android WebView */
+    (function () {
+      var ua = navigator.userAgent || '';
+      if (ua.includes('wv') || ua.includes('Median')) {
+        var footer = document.getElementById('siteFooter');
+        if (footer) footer.style.display = 'none';
+      }
+    })();
+  </script>
+</body>
+
+</html>
