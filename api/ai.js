@@ -50,11 +50,41 @@ module.exports = async function handler(req, res) {
       ? systemPrompt.trim()
       : SYSTEM_DEFAULT;
 
-  // ── Language matching (applies to every request: chat AND teacher) ─────
-  // E.J.AI must answer in the SAME language as the user's latest message and
-  // must never drift. This rule governs language ONLY — it must not alter any
-  // required output structure (JSON keys, field names, code, formatting) that
-  // the base prompt above already defines.
+  // ── Model selection ───────────────────────────────────────────────────
+  // Primary grader: DeepSeek V4 Flash 0731 (GA, released 2026-07-31). The grader
+  // (teacher.js) requests it via the allow-list; plain chat uses it as the default.
+  // NOTE: V4 Flash 0731 does NOT support response_format, so grading relies on a
+  // compact JSON prompt + parse/validate/failover (teacher.js), never response_format.
+  const PRIMARY_MODEL = "deepseek/deepseek-v4-flash-0731";
+  // Automatic failover graders, verified against OpenRouter's live model list.
+  // Both are cheap AND fast, and each sits on a DIFFERENT provider than the
+  // primary on purpose: a DeepSeek outage must not also take out the fallback.
+  // Prices (per 1M tokens, in/out) at the time of writing:
+  //   deepseek/deepseek-v4-flash-0731  $0.14 / $0.28   (primary)
+  //   google/gemini-2.5-flash-lite     $0.10 / $0.40
+  //   openai/gpt-4.1-nano              $0.10 / $0.40
+  // Both follow the same compact-JSON grader prompt, so a fallback grade is just
+  // as valid — the student never has to resubmit and no verdict is ever faked.
+  const FALLBACK_MODELS = ["google/gemini-2.5-flash-lite", "openai/gpt-4.1-nano"];
+  const ALLOWED_REQUEST_MODELS = new Set([PRIMARY_MODEL, ...FALLBACK_MODELS]);
+  const selectedModel = typeof requestedModel === "string" && ALLOWED_REQUEST_MODELS.has(requestedModel)
+    ? requestedModel
+    : null;
+  // The model chain: the requested (or primary) model first, then the remaining
+  // fallbacks. On ANY failure of one, the loop below fails over to the next.
+  const head = selectedModel || PRIMARY_MODEL;
+  const MODELS = [head, ...FALLBACK_MODELS.filter((m) => m !== head)];
+
+  // A "structured" request carries a custom system prompt or an allow-listed
+  // model — i.e. the teacher grader. Plain chat sends only { message }.
+  const isStructured = selectedModel !== null || (typeof systemPrompt === "string" && systemPrompt.trim() !== "");
+
+  // ── Language policy ───────────────────────────────────────────────────
+  // Plain chat: E.J.AI answers in the SAME language as the user's latest message.
+  // Structured (grader) requests are the exception and MUST stay English: the
+  // verdict values ("correct" | "partial" | "incorrect") are English enum tokens
+  // and the client rejects anything outside that enum, so a translated reply
+  // would be discarded as invalid and cost the student a real grade.
   const LANGUAGE_RULE = [
     "",
     "LANGUAGE RULE (highest priority):",
@@ -64,7 +94,14 @@ module.exports = async function handler(req, res) {
     "- This rule governs language only: keep any required output format, JSON keys, field names, code, and numbers exactly as instructed above and translate just the natural-language text."
   ].join("\n");
 
-  const finalSystem = baseSystem + "\n" + LANGUAGE_RULE;
+  const ENGLISH_RULE = [
+    "",
+    "LANGUAGE RULE (highest priority):",
+    "- Write the ENTIRE reply in English, no matter what language the student's answer is written in.",
+    "- Grade the student's meaning even when they answer in another language, but every value you output (verdict, feedback, missing, correction) must be English."
+  ].join("\n");
+
+  const finalSystem = baseSystem + "\n" + (isStructured ? ENGLISH_RULE : LANGUAGE_RULE);
 
   // Clamp tokens to a safe range; keep the original 500 default.
   const parsedTokens = parseInt(maxTokens, 10);
@@ -94,32 +131,6 @@ module.exports = async function handler(req, res) {
   // they get a real error status so the failure is visible, not masked as a reply.
   const FALLBACK_REPLY =
     "EJ.Ai is currently busy helping other students. Please try again in a few seconds.";
-
-  // ── Model selection ───────────────────────────────────────────────────
-  // Primary grader: DeepSeek V4 Flash 0731 (GA, released 2026-07-31). The grader
-  // (teacher.js) requests it via the allow-list; plain chat uses it as the default.
-  // NOTE: V4 Flash 0731 does NOT support response_format, so grading relies on a
-  // compact JSON prompt + parse/validate/retry (teacher.js), never response_format.
-  const PRIMARY_MODEL = "deepseek/deepseek-v4-flash-0731";
-  // Automatic failover graders. Both are cheap, fast, currently-available instruct
-  // models on OpenRouter (verified against its live model list). They are on a
-  // DIFFERENT provider than the primary on purpose: a DeepSeek outage or slowdown
-  // must not also take out the fallback. Each follows the same compact-JSON grader
-  // prompt (none needs response_format), so a fallback grade is just as valid — the
-  // student never has to resubmit. Order = try quality first, then cheapest.
-  const FALLBACK_MODELS = ["google/gemini-3.8-flash", "qwen/qwen3.8-flash"];
-  const ALLOWED_REQUEST_MODELS = new Set([PRIMARY_MODEL, ...FALLBACK_MODELS]);
-  const selectedModel = typeof requestedModel === "string" && ALLOWED_REQUEST_MODELS.has(requestedModel)
-    ? requestedModel
-    : null;
-  // The model chain: the requested (or primary) model first, then the remaining
-  // fallbacks. On ANY failure of one, the loop below fails over to the next.
-  const head = selectedModel || PRIMARY_MODEL;
-  const MODELS = [head, ...FALLBACK_MODELS.filter((m) => m !== head)];
-
-  // A "structured" request carries a custom system prompt or an allow-listed
-  // model — i.e. the teacher grader. Plain chat sends only { message }.
-  const isStructured = selectedModel !== null || (typeof systemPrompt === "string" && systemPrompt.trim() !== "");
 
   // Upstream (OpenRouter) timing. Kept comfortably BELOW two hard limits so the
   // function always returns its OWN clean error instead of being force-killed:
@@ -159,63 +170,79 @@ module.exports = async function handler(req, res) {
   // the fallback.
   async function tryModel(model, timeoutMs) {
     const ctrl = new AbortController();
+    // The timer stays armed for the WHOLE attempt — request, response body and
+    // JSON parsing — and is cleared only in the outer finally. fetch() resolves
+    // as soon as the headers arrive, so clearing it any earlier would leave the
+    // body read unbounded: a model that streams headers then stalls mid-body
+    // would hang past the total budget and get the function killed with no
+    // response at all. Aborting the controller also tears down the body stream,
+    // so an AbortError can surface from the read as well as from the request.
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-    let response;
     try {
-      response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://ictdiploma.com",
-          "X-Title": "VTA ICT L5 Community AI"
-        },
-        body: buildPayload(model),
-        signal: ctrl.signal
-      });
-    } catch (fetchError) {
-      // Network / DNS error, or the upstream timeout above fired (AbortError).
-      const timedOut = fetchError.name === "AbortError";
-      lastError = timedOut
-        ? `[${model}] timed out after ${timeoutMs} ms`
-        : `[${model}] fetch error: ${fetchError.message}`;
-      lastFailure = { model, stage: timedOut ? "timeout" : "network", message: timedOut ? `timed out after ${timeoutMs} ms` : fetchError.message };
-      console.error(lastError);
-      return null;
+      let response;
+      try {
+        response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://ictdiploma.com",
+            "X-Title": "VTA ICT L5 Community AI"
+          },
+          body: buildPayload(model),
+          signal: ctrl.signal
+        });
+      } catch (fetchError) {
+        // Network / DNS error, or the upstream timeout above fired (AbortError).
+        const timedOut = fetchError.name === "AbortError";
+        lastError = timedOut
+          ? `[${model}] timed out after ${timeoutMs} ms`
+          : `[${model}] fetch error: ${fetchError.message}`;
+        lastFailure = { model, stage: timedOut ? "timeout" : "network", message: timedOut ? `timed out after ${timeoutMs} ms` : fetchError.message };
+        console.error(lastError);
+        return null;
+      }
+
+      // Non-2xx from OpenRouter (invalid model id, auth, credits, rate limit…).
+      // Preserve the EXACT upstream status and body — this IS the real error.
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "");
+        lastError = `[${model}] HTTP ${response.status}: ${errorText}`;
+        lastFailure = { model, stage: "upstream_http", status: response.status, body: errorText.slice(0, 1500) };
+        console.error(lastError);
+        return null;
+      }
+
+      // Read + parse the response body, still inside the abort window above.
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseError) {
+        const timedOut = parseError.name === "AbortError";
+        lastError = timedOut
+          ? `[${model}] timed out after ${timeoutMs} ms while reading the response body`
+          : `[${model}] JSON parse error: ${parseError.message}`;
+        lastFailure = {
+          model,
+          stage: timedOut ? "timeout" : "parse",
+          message: timedOut ? `timed out after ${timeoutMs} ms reading body` : parseError.message
+        };
+        console.error(lastError);
+        return null;
+      }
+
+      const reply = data?.choices?.[0]?.message?.content?.trim();
+      if (!reply) {
+        lastError = `[${model}] empty reply from model`;
+        lastFailure = { model, stage: "empty_reply", body: JSON.stringify(data).slice(0, 1500) };
+        console.error(lastError);
+        return null;
+      }
+
+      return reply;
     } finally {
       clearTimeout(timer);
     }
-
-    // Non-2xx from OpenRouter (invalid model id, auth, credits, rate limit…).
-    // Preserve the EXACT upstream status and body — this IS the real error.
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => "");
-      lastError = `[${model}] HTTP ${response.status}: ${errorText}`;
-      lastFailure = { model, stage: "upstream_http", status: response.status, body: errorText.slice(0, 1500) };
-      console.error(lastError);
-      return null;
-    }
-
-    // Parse the response body
-    let data;
-    try {
-      data = await response.json();
-    } catch (parseError) {
-      lastError = `[${model}] JSON parse error: ${parseError.message}`;
-      lastFailure = { model, stage: "parse", message: parseError.message };
-      console.error(lastError);
-      return null;
-    }
-
-    const reply = data?.choices?.[0]?.message?.content?.trim();
-    if (!reply) {
-      lastError = `[${model}] empty reply from model`;
-      lastFailure = { model, stage: "empty_reply", body: JSON.stringify(data).slice(0, 1500) };
-      console.error(lastError);
-      return null;
-    }
-
-    return reply;
   }
 
   // ── Missing credential guard ──────────────────────────────────────────
@@ -225,8 +252,7 @@ module.exports = async function handler(req, res) {
     console.error("OPENROUTER_API_KEY is not set in the environment.");
     if (isStructured) {
       return res.status(500).json({
-        error: "AI grader is not configured: OPENROUTER_API_KEY is missing on the server.",
-        env: { keyPresent: false, keyLength: 0 }
+        error: "AI grader is not configured: OPENROUTER_API_KEY is missing on the server."
       });
     }
     return res.status(200).json({ reply: FALLBACK_REPLY });
@@ -237,15 +263,21 @@ module.exports = async function handler(req, res) {
     for (let i = 0; i < MODELS.length; i++) {
       const model = MODELS[i];
 
-      // Only start a fresh attempt if enough of the shared budget remains for it
-      // to have a real chance; otherwise stop and let the total-failure path run.
+      // Only start an attempt if enough of the SHARED budget remains for it to
+      // have a real chance; otherwise stop and let the total-failure path run.
+      // This is checked for every attempt including the first: the handler can
+      // already have spent time getting here, and a non-positive timeoutMs would
+      // make setTimeout fire immediately and abort the request before it began.
       // No inter-model backoff: a fallback is a DIFFERENT model, so there is nothing
       // to wait for, and every spare millisecond is better spent answering.
       const remaining = deadline - Date.now();
-      if (i > 0 && remaining < MIN_ATTEMPT_MS) {
+      if (remaining < MIN_ATTEMPT_MS) {
         console.warn(`Skipping remaining models: only ${remaining} ms of budget left`);
         break;
       }
+      // Each attempt is capped BOTH by the per-model cap and by whatever is left
+      // of the shared budget, so one slow model can never consume the whole
+      // budget and starve the fallbacks.
       const timeoutMs = Math.min(PER_MODEL_TIMEOUT_MS, remaining);
 
       console.log(`Attempting model: ${model} (timeout ${timeoutMs} ms)`);
@@ -271,25 +303,24 @@ module.exports = async function handler(req, res) {
       // Chrome → Network → /api/ai → Response. Trim this back once the cause is found.
       const upstreamMsg = lastFailure
         ? (lastFailure.status
-            ? `OpenRouter HTTP ${lastFailure.status}: ${lastFailure.body || ""}`
-            : `${lastFailure.stage}: ${lastFailure.message || lastFailure.body || ""}`)
+            ? `OpenRouter HTTP ${lastFailure.status}: ${String(lastFailure.body || "").slice(0, 200)}`
+            : `${lastFailure.stage}: ${String(lastFailure.message || lastFailure.body || "").slice(0, 200)}`)
         : "no upstream response was captured";
       // A timeout / network failure is a gateway timeout (504); an upstream error
       // reply, parse failure or empty completion is a bad gateway (502). Distinct
       // codes make the real cause visible in Network → /api/ai instead of hidden.
       const timedOutOrNetwork = lastFailure && (lastFailure.stage === "timeout" || lastFailure.stage === "network");
       const statusCode = timedOutOrNetwork ? 504 : 502;
+      // Report the cause WITHOUT leaking secret material: the upstream stage and
+      // status are enough to diagnose, so the raw upstream body and the API key
+      // length (a real, if minor, disclosure to an unauthenticated caller) are
+      // deliberately not returned. The full body is still in the server log above.
       return res.status(statusCode).json({
         error: upstreamMsg,
-        upstream: lastFailure,
-        request: {
-          endpoint: "https://openrouter.ai/api/v1/chat/completions",
-          model: PRIMARY_MODEL
-        },
-        env: {
-          keyPresent: !!process.env.OPENROUTER_API_KEY,
-          keyLength: (process.env.OPENROUTER_API_KEY || "").length
-        }
+        upstream: lastFailure
+          ? { model: lastFailure.model, stage: lastFailure.stage, status: lastFailure.status || null }
+          : null,
+        models_tried: MODELS
       });
     }
     return res.status(200).json({ reply: FALLBACK_REPLY });

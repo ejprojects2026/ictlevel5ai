@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="assets/images/favicon.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Learn ICT Level 5 with E.J.AI — your AI Teacher. Pick a subject and lesson, and get a live, conversational class with questions, feedback, and a results report.">
+  <title>VTA ICT L5 Community · AI Teacher</title>
+  <!-- Inter font for premium typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/responsive.css">
+  <link rel="stylesheet" href="assets/css/animations.css">
+  <link rel="stylesheet" href="assets/css/teacher.css">
+  <style>
+    .teacher-chrome-note {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      width: fit-content;
+      margin-top: 0.7rem;
+      padding-left: 0.75rem;
+      border-left: 2px solid rgba(192, 57, 78, 0.55);
+      color: rgba(255, 255, 255, 0.62);
+      font-size: 0.78rem;
+      line-height: 1.35;
+    }
+
+    .teacher-chrome-note strong {
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .light-theme .teacher-chrome-note {
+      color: rgba(20, 24, 34, 0.62);
+    }
+
+    .light-theme .teacher-chrome-note strong {
+      color: rgba(20, 24, 34, 0.82);
+    }
+
+    @media (max-width: 768px) {
+      .teacher-chrome-note {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container">
+      <div class="logo">VTA ICT L5 Community</div>
+      <button class="mobile-menu-btn" aria-label="Menu" aria-expanded="false">☰</button>
+      <div class="nav-menu">
+        <ul class="nav-links">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="lesson.html">Notes</a></li>
+          <li><a href="papers.html">Papers</a></li>
+          <li><a href="teacher.html" class="active" aria-current="page">AI Teacher</a></li>
+          <li><a href="posts.html">Community</a></li>
+        </ul>
+        <div class="nav-buttons">
+          <a href="upload.html" class="btn btn-outline">Add Notes</a>
+          <button id="theme-toggle" class="btn" aria-label="Toggle theme">☀️</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="teacher-main">
+    <div class="teacher-wrap">
+      <!-- ============================================================
+           SCREEN 1 · SETUP
+           ============================================================ -->
+      <section class="teacher-screen active" id="screen-setup" aria-label="Choose your class">
+        <div class="setup-hero">
+          <div class="setup-intro">
+            <span class="teacher-badge">AI Teacher · E.J.AI Live Class</span>
+            <h1>Learn with <span class="accent">E.J.AI</span>, your AI Teacher</h1>
+            <p class="lead">Choose a VTA ICT lesson and enter a live class. E.J.AI explains concepts, asks you
+              questions, listens to your answers, gives feedback and adapts the lesson to you.</p>
+            <span class="live-status"><span class="live-dot" aria-hidden="true"></span> E.J.AI Ready</span>
+            <div class="teacher-chrome-note" aria-label="Browser recommendation">
+              <strong id="teacherBrowserNotice">Best experience with Google Chrome</strong>
+              <span>Voice &amp; speech work best in Chrome.</span>
+            </div>
+          </div>
+          <div class="setup-panel">
+            <div class="setup-teacher">
+              <div class="teacher-avatar setup-avatar state-idle" role="img" aria-label="E.J.AI teacher avatar">
+                <div class="avatar-glow"></div>
+                <svg class="avatar-svg" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="skinB" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" stop-color="#f2c9a8" />
+                      <stop offset="1" stop-color="#e2b08c" />
+                    </linearGradient>
+                    <linearGradient id="shirtB" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" stop-color="#e7ecf3" />
+                      <stop offset="1" stop-color="#c8d2df" />
+                    </linearGradient>
+                    <linearGradient id="tieB" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0" stop-color="#c0394e" />
+                      <stop offset="1" stop-color="#9B1C31" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M40 220 Q40 168 100 160 Q160 168 160 220 Z" fill="url(#shirtB)" />
+                  <path d="M84 164 L100 210 L116 164 L100 172 Z" fill="url(#tieB)" />
+                  <rect x="88" y="128" width="24" height="30" rx="10" fill="url(#skinB)" />
+                  <ellipse cx="100" cy="92" rx="46" ry="50" fill="url(#skinB)" />
+                  <circle cx="54" cy="94" r="9" fill="url(#skinB)" />
+                  <circle cx="146" cy="94" r="9" fill="url(#skinB)" />
+                  <path
+                    d="M55 78 Q58 34 100 34 Q142 34 145 78 Q150 60 140 48 Q128 24 100 24 Q72 24 60 48 Q50 60 55 78 Z"
+                    fill="#2a2f3a" />
+                  <rect class="brow" x="72" y="76" width="20" height="4" rx="2" fill="#2a2f3a" />
+                  <rect class="brow" x="108" y="76" width="20" height="4" rx="2" fill="#2a2f3a" />
+                  <g stroke="#3a4150" stroke-width="2.5" fill="rgba(192,57,78,0.08)">
+                    <rect x="66" y="84" width="26" height="20" rx="7" />
+                    <rect x="108" y="84" width="26" height="20" rx="7" />
+                    <line x1="92" y1="92" x2="108" y2="92" />
+                  </g>
+                  <circle class="eye left" cx="79" cy="94" r="4.5" fill="#1b2430" />
+                  <circle class="eye right" cx="121" cy="94" r="4.5" fill="#1b2430" />
+                  <path class="mouth" d="M84 124 Q100 138 116 124" fill="none" stroke="#a24b52" stroke-width="4"
+                    stroke-linecap="round" />
+                </svg>
+              </div>
+              <div class="setup-teacher-meta">
+                <div class="stage-name">E.J.AI</div>
+                <div class="stage-role">Your ICT Level 5 Teacher</div>
+                <span class="live-status live-status-sm"><span class="live-dot" aria-hidden="true"></span> Ready to
+                  teach</span>
+              </div>
+            </div>
+            <div class="setup-card">
+              <div class="setup-field">
+                <label for="subjectSelect">Subject</label>
+                <select id="subjectSelect" aria-describedby="subjectHint">
+                  <option value="" disabled selected hidden>Choose a subject…</option>
+                </select>
+                <span class="hint" id="subjectHint"></span>
+              </div>
+              <div class="setup-field">
+                <label for="lessonSelect">Lesson</label>
+                <select id="lessonSelect" aria-describedby="lessonHint" disabled>
+                  <option value="" disabled selected hidden>Choose a subject first…</option>
+                </select>
+                <span class="hint" id="lessonHint"></span>
+              </div>
+
+              <div class="lesson-outline empty" id="lessonOutline">
+                <h4>What you'll learn</h4>
+                <ul id="outlineList"></ul>
+              </div>
+
+              <button class="btn btn-primary setup-start" id="startClassBtn" disabled>Start Class →</button>
+            </div>
+            <div class="setup-features">
+              <span class="feat"><span>🎙️</span> Speaks &amp; listens</span>
+              <span class="feat"><span>❓</span> Asks you questions</span>
+              <span class="feat"><span>✅</span> Instant feedback</span>
+              <span class="feat"><span>📊</span> Results report</span>
+            </div>
+          </div>
+          <div class="how-works">
+            <span class="how-works-title">How your class works</span>
+            <ol class="how-steps">
+              <li><span class="hs-ico">📚</span><span class="hs-txt">Choose lesson</span></li>
+              <li><span class="hs-ico">👨‍🏫</span><span class="hs-txt">E.J.AI teaches</span></li>
+              <li><span class="hs-ico">❓</span><span class="hs-txt">Teacher asks</span></li>
+              <li><span class="hs-ico">🎙️</span><span class="hs-txt">You answer</span></li>
+              <li><span class="hs-ico">✅</span><span class="hs-txt">AI checks</span></li>
+              <li><span class="hs-ico">🏆</span><span class="hs-txt">Get your score</span></li>
+            </ol>
+          </div>
+        </div>
+      </section>
+      <!-- ============================================================
+           SCREEN 2 · CLASS
+           ============================================================ -->
+      <section class="teacher-screen" id="screen-class" aria-label="Live class">
+        <div class="class-topbar">
+          <div class="class-meta">
+            <div class="class-subject" id="classSubject">Subject</div>
+            <div class="class-lesson" id="classLesson">Lesson</div>
+          </div>
+          <div class="class-topbar-actions">
+            <span class="phase-chip" id="phaseChip">Teaching</span>
+            <button class="btn btn-outline class-end-btn" id="endClassBtn">End Class</button>
+          </div>
+        </div>
+
+        <div class="class-progress" role="progressbar" aria-label="Class progress" aria-valuemin="0" aria-valuemax="100"
+          aria-valuenow="0" id="progressWrap">
+          <div class="bar" id="progressBar"></div>
+        </div>
+
+        <div class="class-metrics" id="classMetrics">
+          <span class="metric metric-q"><span class="metric-ico">❓</span><span id="qCounter">Getting your class
+              ready…</span></span>
+          <span class="metric metric-mastery"><span class="metric-ico">🧠</span> Concept mastery <b
+              id="masteryVal">0%</b></span>
+        </div>
+
+        <div class="class-grid">
+          <!-- Stage / avatar -->
+          <div class="teacher-stage">
+            <div class="teacher-avatar state-idle" id="avatar" role="img" aria-label="E.J.AI teacher avatar">
+              <div class="avatar-glow"></div>
+              <div class="thinking-bubble" aria-hidden="true"><span></span><span></span><span></span></div>
+              <div class="sound-rings" aria-hidden="true"><span></span><span></span></div>
+              <svg class="avatar-svg" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#f2c9a8" />
+                    <stop offset="1" stop-color="#e2b08c" />
+                  </linearGradient>
+                  <linearGradient id="shirt" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#e7ecf3" />
+                    <stop offset="1" stop-color="#c8d2df" />
+                  </linearGradient>
+                  <linearGradient id="tie" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#c0394e" />
+                    <stop offset="1" stop-color="#9B1C31" />
+                  </linearGradient>
+                </defs>
+                <!-- shoulders / shirt -->
+                <path d="M40 220 Q40 168 100 160 Q160 168 160 220 Z" fill="url(#shirt)" />
+                <path d="M84 164 L100 210 L116 164 L100 172 Z" fill="url(#tie)" />
+                <path d="M84 164 Q100 182 116 164 L100 172 Z" fill="#0d1018" opacity="0.15" />
+                <!-- neck -->
+                <rect x="88" y="128" width="24" height="30" rx="10" fill="url(#skin)" />
+                <!-- head -->
+                <ellipse cx="100" cy="92" rx="46" ry="50" fill="url(#skin)" />
+                <!-- ears -->
+                <circle cx="54" cy="94" r="9" fill="url(#skin)" />
+                <circle cx="146" cy="94" r="9" fill="url(#skin)" />
+                <!-- hair -->
+                <path d="M55 78 Q58 34 100 34 Q142 34 145 78 Q150 60 140 48 Q128 24 100 24 Q72 24 60 48 Q50 60 55 78 Z"
+                  fill="#2a2f3a" />
+                <path d="M60 74 Q70 58 100 58 Q130 58 140 74 Q140 60 100 56 Q60 60 60 74 Z" fill="#1f2430" />
+                <!-- eyebrows -->
+                <rect class="brow" x="72" y="76" width="20" height="4" rx="2" fill="#2a2f3a" />
+                <rect class="brow" x="108" y="76" width="20" height="4" rx="2" fill="#2a2f3a" />
+                <!-- glasses -->
+                <g stroke="#3a4150" stroke-width="2.5" fill="rgba(192,57,78,0.08)">
+                  <rect x="66" y="84" width="26" height="20" rx="7" />
+                  <rect x="108" y="84" width="26" height="20" rx="7" />
+                  <line x1="92" y1="92" x2="108" y2="92" />
+                </g>
+                <!-- eyes -->
+                <circle class="eye left" cx="79" cy="94" r="4.5" fill="#1b2430" />
+                <circle class="eye right" cx="121" cy="94" r="4.5" fill="#1b2430" />
+                <!-- nose -->
+                <path d="M100 100 Q96 112 100 116 Q104 116 104 114" fill="none" stroke="#c99a76" stroke-width="2.5"
+                  stroke-linecap="round" />
+                <!-- mouth -->
+                <path class="mouth" d="M84 124 Q100 138 116 124" fill="none" stroke="#a24b52" stroke-width="4"
+                  stroke-linecap="round" />
+              </svg>
+            </div>
+            <div class="stage-name">E.J.AI</div>
+            <div class="stage-role">Your ICT Level 5 Teacher</div>
+            <span class="status-pill" id="statusPill">
+              <span class="dot"></span><span id="statusText">Ready</span>
+            </span>
+            <div class="speech-controls">
+              <button class="speech-btn" id="muteBtn" aria-label="Mute voice" title="Mute / unmute">🔊</button>
+              <button class="speech-btn" id="replayBtn" aria-label="Replay" title="Replay last line">🔁</button>
+              <button class="speech-btn" id="stopBtn" aria-label="Stop speaking" title="Stop speaking">⏹️</button>
+            </div>
+          </div>
+
+          <!-- Interaction -->
+          <div class="class-interaction">
+            <div class="teacher-say" id="teacherSay" aria-live="polite">
+              <span class="say-label">E.J.AI says</span>
+              <span class="say-text" id="sayText"></span>
+            </div>
+            <div class="teacher-board empty" id="board">
+              <div class="board-concept" id="boardConcept"></div>
+              <ul class="board-points" id="boardPoints"></ul>
+              <pre class="board-code" id="boardCode" hidden></pre>
+            </div>
+
+            <div class="feedback empty" id="feedback" aria-live="polite">
+              <span class="verdict" id="verdict"></span>
+              <div class="verdict-text" id="verdictText"></div>
+            </div>
+
+            <div class="question-box empty" id="questionBox">
+              <span class="q-label">Question</span>
+              <div class="q-text" id="questionText"></div>
+            </div>
+
+            <div class="answer-area hidden" id="answerArea">
+              <div class="transcript" id="transcript" aria-live="polite"></div>
+              <div class="answer-input-row">
+                <textarea id="answerInput" rows="2" placeholder="Type your answer, or tap the mic to speak…"
+                  aria-label="Your answer"></textarea>
+                <button class="mic-btn" id="micBtn" aria-label="Answer by voice" title="Answer by voice">🎤</button>
+              </div>
+              <div class="answer-actions">
+                <span class="spacer"></span>
+                <button class="btn hint-btn" id="skipQuestionBtn" type="button">Skip Question</button>
+                <button class="btn btn-primary answer-submit" id="submitAnswerBtn">Submit Answer</button>
+              </div>
+            </div>
+
+            <div class="class-continue hidden" id="continueRow">
+              <button class="btn btn-primary continue-btn" id="continueBtn">Continue →</button>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- ============================================================
+           SCREEN 3 · RESULTS
+           ============================================================ -->
+      <section class="teacher-screen" id="screen-results" aria-label="Class results">
+        <div class="results-wrap">
+          <div class="results-head">
+            <div class="results-eyebrow"><span class="results-trophy">🏆</span> Class Complete</div>
+            <h2 id="resultsTitle">Your Results</h2>
+            <p id="resultsSubtitle"></p>
+          </div>
+
+          <div class="results-top">
+            <div class="score-card">
+              <div class="score-ring">
+                <svg viewBox="0 0 120 120" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="scoreGrad" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0" stop-color="#ff4d6d" />
+                      <stop offset="0.5" stop-color="#c0394e" />
+                      <stop offset="1" stop-color="#9B1C31" />
+                    </linearGradient>
+                  </defs>
+                  <circle class="track" cx="60" cy="60" r="52" />
+                  <circle class="fill" id="scoreFill" cx="60" cy="60" r="52" />
+                </svg>
+                <div class="score-num"><b id="scoreNum">0</b><small>out of 100</small></div>
+              </div>
+              <div class="score-grade" id="scoreGrade">—</div>
+              <div class="score-sub" id="scoreSub"></div>
+            </div>
+
+            <div class="results-stats">
+              <div class="stat-tile">
+                <span class="stat-ico">📝</span>
+                <span class="stat-val" id="statAnswered">0</span>
+                <span class="stat-lbl">Questions answered</span>
+              </div>
+              <div class="stat-tile">
+                <span class="stat-ico">✅</span>
+                <span class="stat-val" id="statCorrect">0</span>
+                <span class="stat-lbl">Correct answers</span>
+              </div>
+              <div class="stat-tile">
+                <span class="stat-ico">🎯</span>
+                <span class="stat-val" id="statAccuracy">0%</span>
+                <span class="stat-lbl">Accuracy</span>
+              </div>
+              <div class="stat-tile">
+                <span class="stat-ico">📚</span>
+                <span class="stat-val" id="statConcepts">0</span>
+                <span class="stat-lbl">Concepts covered</span>
+              </div>
+            </div>
+          </div>
+          <div class="concept-cols">
+            <div class="concept-panel good">
+              <h3>Concepts understood</h3>
+              <ul id="goodList"></ul>
+              <p class="none" id="goodNone" hidden>Keep practising — you'll get there!</p>
+            </div>
+            <div class="concept-panel work">
+              <h3>Needs more practice</h3>
+              <ul id="workList"></ul>
+              <p class="none" id="workNone" hidden>Nothing flagged — great work! 🎉</p>
+            </div>
+          </div>
+
+          <div class="reco-card">
+            <div class="reco-ico">🚀</div>
+            <div class="reco-body">
+              <div class="reco-label">Recommended next</div>
+              <div class="reco-title" id="recoTitle">—</div>
+              <div class="reco-sub" id="recoSub"></div>
+            </div>
+            <button class="btn btn-primary reco-go" id="recoGoBtn">Start this next →</button>
+          </div>
+
+          <div class="results-actions">
+            <button class="btn btn-outline" id="retryBtn">🔁 Retake this lesson</button>
+            <button class="btn btn-primary" id="newLessonBtn">📚 Choose another lesson</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <footer class="footer">
+    <div class="container">
+      <p>E.J.AI · AI Teacher — part of the VTA ICT L5 Community study platform.</p>
+      <p>© 2026 VTA ICT L5 Community. All rights reserved. — Academic excellence through collaboration.</p>
+    </div>
+  </footer>
+
+  <script>(function(){
+      var log=[];window.__speechLog=log;
+      function install(n,v){try{Object.defineProperty(window,n,{value:v,configurable:true,writable:true});}
+        catch(e){try{window[n]=v;}catch(e2){}}}
+      install("SpeechSynthesisUtterance",function(t){this.text=t;});
+      install("speechSynthesis",{
+        getVoices:function(){return [{name:"Microsoft David",lang:"en-US"}];},
+        onvoiceschanged:null,
+        speak:function(u){log.push(u.text);
+          setTimeout(function(){u.onstart&&u.onstart();},1);
+          setTimeout(function(){u.onend&&u.onend();},5);},
+        cancel:function(){},resume:function(){},pause:function(){}
+      });
+    })();</script>
+  <script src="assets/js/ui.js"></script>
+  <script src="assets/js/teacherData.js"></script>
+  <script src="assets/js/teacher.js"></script>
+  <script>
+    (() => {
+      const notice = document.getElementById('teacherBrowserNotice');
+      const brands = navigator.userAgentData && navigator.userAgentData.brands;
+      const isChrome = Array.isArray(brands)
+        ? brands.some(brand => brand.brand === 'Google Chrome')
+        : /Chrome\//.test(navigator.userAgent) && !/(Edg|OPR|SamsungBrowser)\//.test(navigator.userAgent);
+      if (notice && isChrome) notice.textContent = '✓ Chrome detected · Best experience';
+    })();
+  </script>
+</body>
+
+</html>

@@ -101,8 +101,17 @@ const server = http.createServer((req, res) => {
         try{Object.defineProperty(window,"speechSynthesis",{get:function(){return undefined;},configurable:true});}catch(e){}
         window.__speechLog=[];return;}
       var log=[];window.__speechLog=log;
-      window.SpeechSynthesisUtterance=function(t){this.text=t;};
-      window.speechSynthesis={
+      // window.speechSynthesis is a READ-ONLY accessor on Window: a plain
+      // assignment silently fails and the page keeps using the real engine
+      // (which never fires onstart in headless Chrome, so nothing is ever
+      // logged and every TTS_MODE behaved like a no-op). defineProperty is
+      // the only way to actually install the stub.
+      function install(name,value){
+        try{Object.defineProperty(window,name,{value:value,configurable:true,writable:true});}
+        catch(e){try{window[name]=value;}catch(e2){}}
+      }
+      install("SpeechSynthesisUtterance",function(t){this.text=t;});
+      install("speechSynthesis",{
         getVoices:function(){return [{name:"Microsoft David",lang:"en-US"}];},
         onvoiceschanged:null,
         speak:function(u){log.push(u.text);
@@ -112,7 +121,7 @@ const server = http.createServer((req, res) => {
           setTimeout(function(){u.onend&&u.onend();},60);  // slow-ish voice
         },
         cancel:function(){},resume:function(){},pause:function(){}
-      };
+      });
     })();</script>`;
     data = Buffer.from(String(data).replace("<script src=\"assets/js/ui.js\"></script>", stub + "\n  <script src=\"assets/js/ui.js\"></script>"));
   }
@@ -199,6 +208,8 @@ const snap = `(() => {
     boardVisible: vis("board"), screen: ["setup","class","results"].find(s=>{
       const e=document.getElementById("screen-"+s); return e && e.classList.contains("active"); }),
     spoken: log.length, status: t("statusText"), score: t("scoreNum"),
+    grade: t("scoreGrade"),
+    zeroScoreSpoken: log.some(x=>/scored 0 out of 100/i.test(x)),
     waitingSpoken: log.some(x=>/Give me a moment/i.test(x)),
     failLineSpoken: log.some(x=>/move on to the next point|Thanks for your answer/i.test(x)),
     sorrySpoken: log.some(x=>/Sorry, I couldn'?t check/i.test(x)) };
@@ -287,7 +298,11 @@ try {
   } else {
     // Requirement 4: grader failure (fail/hang) must NEVER show an error and NEVER
     // block — a short line is spoken and the class auto-advances past the question.
-    const budget = AI_MODE === "hang" ? 16000 : 8000;
+    // A hung grader is bounded by teacher.js GRADE_TOTAL_BUDGET_MS (20 s of shared
+    // budget across the whole model chain), NOT by a single request timeout — so the
+    // graceful advance cannot arrive before ~20 s. Allow for that plus the fail line
+    // being rendered/spoken. ("fail" answers instantly with an error, so 8 s is fine.)
+    const budget = AI_MODE === "hang" ? 30000 : 8000;
     const adv = await waitFor(
       (x) => x.failLineSpoken || x.screen === "results" || x.continueVisible || (x.answerVisible && !x.submitDisabled),
       "graceful auto-advance after grader failure", budget);
@@ -306,8 +321,10 @@ try {
   if (AI_MODE === "hang") {
     ok("11. full-class drive skipped for hang mode (single-question graceful advance already verified)");
   } else {
-    let guard = 0;
-    while (guard++ < 60) {
+    // Time-based budget: with the TTS stub actually working, a full class now
+    // spends real time speaking, so a fixed 60-iteration cap was too small.
+    const driveDeadline = Date.now() + (SLOW ? 180000 : 120000);
+    while (Date.now() < driveDeadline) {
       s = await evalJs(snap);
       if (s.screen === "results") break;
       if (s.continueVisible) {
@@ -319,9 +336,29 @@ try {
       }
       await new Promise((r) => setTimeout(r, 500));
     }
+    // The results ring counts the score UP over ~900ms, so reading it immediately
+    // samples a mid-animation frame (a "score=23" that is really 100). Wait for the
+    // number to stop changing before asserting on it.
+    let prevScore = null, stable = 0;
+    for (let i = 0; i < 30; i++) {
+      const cur = (await evalJs(snap)).score;
+      if (cur === prevScore) { if (++stable >= 3) break; } else stable = 0;
+      prevScore = cur;
+      await new Promise((r) => setTimeout(r, 150));
+    }
     s = await evalJs(snap);
     if (s.screen === "results") ok("11. full class reaches results without blocking", `score=${s.score}`);
     else fail("11. full class reaches results without blocking", `stuck: ${JSON.stringify(s)}`);
+
+    // 12. When the grader never worked, EVERY answer is "unverified": nothing was
+    // graded, so the results must say so instead of reporting a 0 the student never
+    // earned — on screen AND in the spoken wrap-up.
+    if (AI_MODE === "fail" && s.screen === "results") {
+      if (/not graded/i.test(s.grade || "")) ok("12. ungraded class shows 'Not graded'", s.grade);
+      else fail("12. ungraded class shows 'Not graded'", `grade="${s.grade}"`);
+      if (!s.zeroScoreSpoken) ok("12b. ungraded class never says 'scored 0 out of 100'");
+      else fail("12b. ungraded class never says 'scored 0 out of 100'", "the 0/100 line was spoken");
+    }
   }
 } catch (e) {
   fail("flow", e.message);

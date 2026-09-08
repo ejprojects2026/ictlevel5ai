@@ -1,2 +1,3 @@
-2026/09/07-10:24:51.675 6604 Creating DB C:\Users\Eshan Janidu\Downloads\ictlevel5new-main - ai teacher\_chromeprofile\Default\Sync Data\LevelDB since it was missing.
-2026/09/07-10:24:51.685 6604 Reusing MANIFEST C:\Users\Eshan Janidu\Downloads\ictlevel5new-main - ai teacher\_chromeprofile\Default\Sync Data\LevelDB/MANIFEST-000001
+2026/09/08-10:45:48.022 76d8 Reusing MANIFEST C:\Users\Eshan Janidu\Downloads\ictlevel5ai\_chromeprofile\Default\Sync Data\LevelDB/MANIFEST-000001
+2026/09/08-10:45:48.025 76d8 Recovering log #3
+2026/09/08-10:45:48.025 76d8 Reusing old log C:\Users\Eshan Janidu\Downloads\ictlevel5ai\_chromeprofile\Default\Sync Data\LevelDB/000003.log 

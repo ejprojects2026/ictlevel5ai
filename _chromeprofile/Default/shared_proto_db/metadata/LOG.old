@@ -1,2 +1,3 @@
-2026/09/07-10:24:51.851 6a50 Creating DB C:\Users\Eshan Janidu\Downloads\ictlevel5new-main - ai teacher\_chromeprofile\Default\shared_proto_db\metadata since it was missing.
-2026/09/07-10:24:51.859 6a50 Reusing MANIFEST C:\Users\Eshan Janidu\Downloads\ictlevel5new-main - ai teacher\_chromeprofile\Default\shared_proto_db\metadata/MANIFEST-000001
+2026/09/08-10:45:48.105 185c Reusing MANIFEST C:\Users\Eshan Janidu\Downloads\ictlevel5ai\_chromeprofile\Default\shared_proto_db\metadata/MANIFEST-000001
+2026/09/08-10:45:48.106 185c Recovering log #3
+2026/09/08-10:45:48.106 185c Reusing old log C:\Users\Eshan Janidu\Downloads\ictlevel5ai\_chromeprofile\Default\shared_proto_db\metadata/000003.log 
