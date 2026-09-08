@@ -96,34 +96,47 @@ module.exports = async function handler(req, res) {
     "EJ.Ai is currently busy helping other students. Please try again in a few seconds.";
 
   // ── Model selection ───────────────────────────────────────────────────
-  // DeepSeek V4 Flash 0731 (GA, released 2026-07-31). The grader (teacher.js)
-  // requests it via the allow-list; plain chat uses it as the default too. No
-  // substitution to another model family — if it fails, the error is surfaced
-  // below so the real cause is visible instead of masked.
+  // Primary grader: DeepSeek V4 Flash 0731 (GA, released 2026-07-31). The grader
+  // (teacher.js) requests it via the allow-list; plain chat uses it as the default.
   // NOTE: V4 Flash 0731 does NOT support response_format, so grading relies on a
   // compact JSON prompt + parse/validate/retry (teacher.js), never response_format.
   const PRIMARY_MODEL = "deepseek/deepseek-v4-flash-0731";
-  const ALLOWED_REQUEST_MODELS = new Set([PRIMARY_MODEL]);
+  // Automatic failover graders. Both are cheap, fast, currently-available instruct
+  // models on OpenRouter (verified against its live model list). They are on a
+  // DIFFERENT provider than the primary on purpose: a DeepSeek outage or slowdown
+  // must not also take out the fallback. Each follows the same compact-JSON grader
+  // prompt (none needs response_format), so a fallback grade is just as valid — the
+  // student never has to resubmit. Order = try quality first, then cheapest.
+  const FALLBACK_MODELS = ["google/gemini-3.8-flash", "qwen/qwen3.8-flash"];
+  const ALLOWED_REQUEST_MODELS = new Set([PRIMARY_MODEL, ...FALLBACK_MODELS]);
   const selectedModel = typeof requestedModel === "string" && ALLOWED_REQUEST_MODELS.has(requestedModel)
     ? requestedModel
     : null;
-  const MODELS = selectedModel ? [selectedModel] : [PRIMARY_MODEL];
+  // The model chain: the requested (or primary) model first, then the remaining
+  // fallbacks. On ANY failure of one, the loop below fails over to the next.
+  const head = selectedModel || PRIMARY_MODEL;
+  const MODELS = [head, ...FALLBACK_MODELS.filter((m) => m !== head)];
 
   // A "structured" request carries a custom system prompt or an allow-listed
   // model — i.e. the teacher grader. Plain chat sends only { message }.
   const isStructured = selectedModel !== null || (typeof systemPrompt === "string" && systemPrompt.trim() !== "");
 
-  // Upstream (OpenRouter) timeout. Kept comfortably BELOW two hard limits so the
+  // Upstream (OpenRouter) timing. Kept comfortably BELOW two hard limits so the
   // function always returns its OWN clean error instead of being force-killed:
-  //   1. Vercel's serverless max duration (10 s on Hobby). The old 20 s wait was
-  //      killed by the platform at 10 s and surfaced to the browser as an opaque
-  //      hang — which the client's AbortController reported as
-  //      "signal is aborted without reason".
-  //   2. The client's 12 s grader fetch timeout (teacher.js AI_TIMEOUT_MS), so
-  //      the browser receives this response rather than aborting first.
-  // 9 s gives DeepSeek V4 Flash 0731 room to answer while failing fast when it
-  // cannot. No stacking, no server-side retry: one request, one short timeout.
-  const UPSTREAM_TIMEOUT_MS = 9000;
+  //   1. Vercel's serverless max duration (10 s on Hobby). Overrunning it gets the
+  //      function killed and surfaces to the browser as an opaque hang (which the
+  //      client's AbortController reports as "signal is aborted without reason").
+  //   2. The client's 12 s grader fetch timeout (teacher.js AI_TIMEOUT_MS), so the
+  //      browser receives this response rather than aborting first.
+  // TOTAL_BUDGET_MS bounds ALL model attempts combined; PER_MODEL_TIMEOUT_MS caps a
+  // single attempt so a slow primary still leaves time to fail over to a fallback
+  // inside the same budget. A fresh attempt is only started if MIN_ATTEMPT_MS of
+  // budget remains, so the function never overruns. No inter-model backoff: failing
+  // over to a DIFFERENT model needs no wait, and the budget is spent on answering.
+  const TOTAL_BUDGET_MS = 9000;
+  const PER_MODEL_TIMEOUT_MS = 5000;
+  const MIN_ATTEMPT_MS = 1500;
+  const deadline = Date.now() + TOTAL_BUDGET_MS;
 
   // Most recent upstream failure, surfaced to structured callers/logs.
   // lastFailure is the structured form returned in the (temporary) 502 diagnostic.
@@ -141,9 +154,12 @@ module.exports = async function handler(req, res) {
   }
 
   // ── Single model attempt ──────────────────────────────────────────────
-  async function tryModel(model) {
+  // timeoutMs bounds THIS attempt only; the caller passes whatever remains of the
+  // shared budget (capped at PER_MODEL_TIMEOUT_MS) so one slow model can't starve
+  // the fallback.
+  async function tryModel(model, timeoutMs) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), UPSTREAM_TIMEOUT_MS);
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     let response;
     try {
       response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -161,9 +177,9 @@ module.exports = async function handler(req, res) {
       // Network / DNS error, or the upstream timeout above fired (AbortError).
       const timedOut = fetchError.name === "AbortError";
       lastError = timedOut
-        ? `[${model}] timed out after ${UPSTREAM_TIMEOUT_MS} ms`
+        ? `[${model}] timed out after ${timeoutMs} ms`
         : `[${model}] fetch error: ${fetchError.message}`;
-      lastFailure = { model, stage: timedOut ? "timeout" : "network", message: timedOut ? `timed out after ${UPSTREAM_TIMEOUT_MS} ms` : fetchError.message };
+      lastFailure = { model, stage: timedOut ? "timeout" : "network", message: timedOut ? `timed out after ${timeoutMs} ms` : fetchError.message };
       console.error(lastError);
       return null;
     } finally {
@@ -221,14 +237,20 @@ module.exports = async function handler(req, res) {
     for (let i = 0; i < MODELS.length; i++) {
       const model = MODELS[i];
 
-      // Small backoff before each retry (not before the first attempt).
-      if (i > 0) {
-        await new Promise(resolve => setTimeout(resolve, 600));
+      // Only start a fresh attempt if enough of the shared budget remains for it
+      // to have a real chance; otherwise stop and let the total-failure path run.
+      // No inter-model backoff: a fallback is a DIFFERENT model, so there is nothing
+      // to wait for, and every spare millisecond is better spent answering.
+      const remaining = deadline - Date.now();
+      if (i > 0 && remaining < MIN_ATTEMPT_MS) {
+        console.warn(`Skipping remaining models: only ${remaining} ms of budget left`);
+        break;
       }
+      const timeoutMs = Math.min(PER_MODEL_TIMEOUT_MS, remaining);
 
-      console.log(`Attempting model: ${model}`);
+      console.log(`Attempting model: ${model} (timeout ${timeoutMs} ms)`);
       const startTime = Date.now();
-      const reply = await tryModel(model);
+      const reply = await tryModel(model, timeoutMs);
 
       if (reply !== null) {
         // Success — return immediately.

@@ -136,7 +136,7 @@ function loadTeacherData(sandbox) {
 }
 
 function makeFetch(behavior) {
-  // behavior: "ok" (valid JSON reply) | "fail" (reject) | "hang" (never resolve, honours abort)
+  // behavior: "ok" (valid grader verdict) | "fail" (reject) | "hang" (never resolve, honours abort)
   return function fetchStub(url, opts) {
     if (behavior === "fail") return Promise.reject(new Error("network down"));
     if (behavior === "hang") {
@@ -145,13 +145,18 @@ function makeFetch(behavior) {
           opts.signal.addEventListener("abort", () => reject(new Error("aborted")));
       });
     }
+    // Grader contract (matches teacher.js callGrader / api/ai.js): the reply is a
+    // JSON *string* carrying a verdict, wrapped in { reply, model }.
+    let model = "stub-grader";
+    try { const b = JSON.parse((opts && opts.body) || "{}"); if (b.model) model = b.model; } catch (_) { }
     const reply = JSON.stringify({
-      explanation: "A stubbed explanation that teaches the concept in a couple of short sentences.",
-      board: { concept: "Stub", points: ["point one", "point two"], code: "" },
-      question: "What is the stubbed concept?",
-      expected: "A stubbed concept used for testing."
+      verdict: "correct",
+      score: 90,
+      feedback: "That's right — you captured the key idea.",
+      missing: [],
+      correction: "A stubbed concept used for testing."
     });
-    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ reply }) });
+    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ reply, model }) });
   };
 }
 

@@ -390,6 +390,9 @@
 .teacher-stage {
   position: sticky;
   top: 84px;
+  /* Submit scrolls UP to this card; clear the sticky navbar so it isn't hidden
+     under it (mirrors .feedback's scroll-margin-top). */
+  scroll-margin-top: 90px;
   background: var(--card-color);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);

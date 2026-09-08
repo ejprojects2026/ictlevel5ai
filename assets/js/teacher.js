@@ -796,6 +796,15 @@
   // match api/ai.js ALLOWED_REQUEST_MODELS. DeepSeek V4 Flash 0731 does not support
   // response_format, so grading uses a compact JSON prompt + parse/validate/retry.
   const GRADER_MODEL = "deepseek/deepseek-v4-flash-0731";
+
+  // Submit UX timing/lines. The teacher only LOOKS busy if grading is slow: after
+  // THINKING_DELAY_MS with no grade yet, show the thinking state and say the
+  // waiting line ONCE. A grade that arrives sooner cancels the timer, so a fast
+  // answer never triggers the waiting speech. GRADER_FAIL_LINE is the graceful
+  // "move on" spoken when every grader fails — the student is never marked wrong.
+  const THINKING_DELAY_MS = 1000;
+  const WAITING_LINE = "Give me a moment, I'm checking your answer.";
+  const GRADER_FAIL_LINE = "Thanks for your answer. Let's move on to the next point.";
   // Short, cheap, JSON-only grader prompt. The AI is the ONLY thing that decides
   // the verdict; the score is supporting information and must never convert it.
   const GRADER_SYSTEM = [
@@ -810,15 +819,107 @@
     "{\"verdict\":\"correct|partial|incorrect\",\"score\":0,\"feedback\":\"...\",\"missing\":[\"...\"],\"correction\":\"...\"}"
   ].join("\n");
 
-  async function callGrader(question, expected, required, answer) {
-    const compact = (value, limit) => String(value || "").replace(/\s+/g, " ").trim().slice(0, limit);
-    const requiredPoints = Array.isArray(required) ? required.map((point) => compact(point, 240)).filter(Boolean).slice(0, 5) : [];
-    const message = [
-      "QUESTION: " + compact(question, 900),
-      "EXPECTED: " + compact(expected, 1200),
-      "REQUIRED: " + JSON.stringify(requiredPoints),
-      "STUDENT: " + compact(answer, 3500)
+  // ── Background grading PREPARATION (static only — NEVER calls the AI) ──────
+  // Requirement 5A. While the student learns, pre-assemble the STATIC half of the
+  // grader request: the system prompt is constant, and the QUESTION / EXPECTED /
+  // REQUIRED lines depend only on the question, never on the student. Caching that
+  // prefix means Submit only appends the student's actual answer and POSTs at once,
+  // with no compacting or JSON assembly on the hot path.
+  //
+  // This is NOT pre-grading. It never calls the grader, never predicts or creates a
+  // verdict, never records an attempt, and never touches score/mastery — it only
+  // builds and caches strings. The single AI call still happens in callGrader, only
+  // after the student clicks Submit.
+  const graderPrepCache = new Map(); // question string -> { question, messagePrefix }
+
+  const compactForGrader = (value, limit) =>
+    String(value || "").replace(/\s+/g, " ").trim().slice(0, limit);
+
+  // Pure builder for a question's static grader payload (everything except the
+  // student's answer). Same format callGrader has always sent, so a cached prep and
+  // a freshly built one are byte-identical.
+  function buildGraderPrep(question, expected, required) {
+    const requiredPoints = Array.isArray(required)
+      ? required.map((point) => compactForGrader(point, 240)).filter(Boolean).slice(0, 5)
+      : [];
+    const messagePrefix = [
+      "QUESTION: " + compactForGrader(question, 900),
+      "EXPECTED: " + compactForGrader(expected, 1200),
+      "REQUIRED: " + JSON.stringify(requiredPoints)
     ].join("\n");
+    return { question: String(question || ""), messagePrefix };
+  }
+
+  // Idempotent cache fill. Safe to call repeatedly: it never rebuilds an existing
+  // entry and never makes a network request. Keyed by the question text, which is
+  // unique per asked item. Returns the prep (or null for an empty question).
+  function prepareGrader(question, expected, required) {
+    const key = String(question || "");
+    if (!key) return null;
+    let prep = graderPrepCache.get(key);
+    if (!prep) {
+      prep = buildGraderPrep(question, expected, required);
+      graderPrepCache.set(key, prep);
+    }
+    return prep;
+  }
+
+  // Look one step ahead and pre-assemble the NEXT question's grader payload when its
+  // concept is already known — teaching steps carry their concept, and mini-test
+  // steps do too once the adaptive plan is fixed (state.testPlan). This only READS
+  // curriculum data through the same pure builders the flow uses; it never advances
+  // the test pointer, mutates state, or touches the current question.
+  function prepareNextGrader() {
+    const next = state.steps[state.stepIndex + 1];
+    if (!next) return;
+    let concept = null;
+    let mode = null;
+    if (next.type === "teach") { concept = next.concept; mode = "learn"; }
+    else if (next.type === "ask") {
+      mode = next.mode || "test";
+      // Mini-test concepts are assigned at runtime; runAsk reads plan[testAskIndex]
+      // then increments, so by now testAskIndex already points at the NEXT one.
+      concept = next.concept || (state.testPlan && state.testPlan[state.testAskIndex]) || null;
+    }
+    if (!concept) return;
+    const data = mode === "learn" ? buildTeachTurn(concept) : buildQuestion(concept);
+    prepareGrader(data.question, data.expected, data.required);
+  }
+
+  // Prepare the ACTIVE question (if one is awaiting an answer) and the upcoming one.
+  // Scheduled off the hot path via scheduleIdle so it can never delay teaching text,
+  // TTS, question rendering or the student typing.
+  function prepareGradingAhead() {
+    const p = state.pending;
+    if (p && p.question && state.currentQid !== null &&
+        state.pendingQid === state.currentQid && !state.consumedQids.has(state.currentQid)) {
+      prepareGrader(p.question, p.expected, p.required);
+    }
+    prepareNextGrader();
+  }
+
+  // Run work when the browser is idle so preparation never competes with rendering
+  // or speech. Falls back to a macrotask where requestIdleCallback is unavailable
+  // (Safari, jsdom, the Node test harness). Errors are swallowed — preparation is a
+  // best-effort optimisation whose failure must never reach the student.
+  function scheduleIdle(fn) {
+    const run = () => { try { fn(); } catch (_) { } };
+    try {
+      if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+        window.requestIdleCallback(run, { timeout: 800 });
+        return;
+      }
+    } catch (_) { }
+    setTimeout(run, 0);
+  }
+
+  async function callGrader(question, expected, required, answer) {
+    // Requirement 5A: use the background-prepared static payload when it exists;
+    // otherwise build it now (identical result, just without the pre-warm). Only the
+    // STUDENT line depends on the answer, so it is the only piece assembled on this
+    // hot path. This function is the ONE and ONLY place the AI grader is called.
+    const prep = graderPrepCache.get(String(question || "")) || buildGraderPrep(question, expected, required);
+    const message = prep.messagePrefix + "\nSTUDENT: " + compactForGrader(answer, 3500);
     const ctrl = typeof AbortController === "function" ? new AbortController() : null;
     const timer = setTimeout(() => { if (ctrl) try { ctrl.abort(); } catch (_) { } }, AI_TIMEOUT_MS);
     let res;
@@ -839,9 +940,11 @@
     } finally { clearTimeout(timer); }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || ("HTTP " + res.status));
-    // Sanity check: the grade must come from the requested model (api/ai.js does
-    // not substitute a different model, so a mismatch means something is wrong).
-    if (data.model && data.model !== GRADER_MODEL) throw new Error("Unexpected grading model: " + data.model);
+    // The server may legitimately fail over to a fallback grader (api/ai.js) when
+    // the primary is down/slow, so a differing model is expected, not an error —
+    // the fallback follows the same JSON grader prompt, so its grade is just as
+    // valid and the student never has to resubmit. Log it for visibility only.
+    if (data.model && data.model !== GRADER_MODEL) console.info("E.J.AI graded by fallback model:", data.model);
     return data.reply || "";
   }
 
@@ -1114,14 +1217,14 @@
   }
   function clearQuestion() { el.questionBox.classList.add("empty"); }
 
-  // Transient "checking…" state shown in the SAME feedback card the verdict
-  // will land in, so Submit scrolls once and the viewport stays put.
+  // Transient "checking…" state shown in the SAME feedback card the verdict will
+  // land in. It does NOT scroll: on Submit the viewport moves UP to the teacher
+  // (scrollToTeacher) while grading runs; the verdict later calls its own scroll.
   function showChecking() {
     el.feedback.classList.remove("empty", "correct", "partial", "incorrect");
     el.feedback.classList.add("checking");
     el.verdict.textContent = "Checking…";
     el.verdictText.textContent = "E.J.AI is checking your answer…";
-    scrollToInteraction("feedback");
   }
 
   function showFeedback(verdict, text) {
@@ -1169,6 +1272,22 @@
     });
   }
 
+  // On Submit, bring the E.J.AI teacher card into view (scroll UP) so the student
+  // watches the teacher while their answer is graded. Prefers the whole
+  // .teacher-stage; falls back to the avatar, then to the top of the page.
+  // scroll-margin-top on .teacher-stage (teacher.css) clears the sticky navbar.
+  function scrollToTeacher() {
+    const stage = (el.avatar && typeof el.avatar.closest === "function" && el.avatar.closest(".teacher-stage")) || el.avatar;
+    if (!stage) return;
+    window.requestAnimationFrame(() => {
+      try {
+        stage.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start", inline: "nearest" });
+      } catch (_) {
+        try { window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" }); } catch (__) { }
+      }
+    });
+  }
+
   function showContinue(label) {
     el.continueBtn.textContent = label || "Continue →";
     el.continueRow.classList.remove("hidden");
@@ -1204,6 +1323,7 @@
     state.pendingQid = null;
     state.nextQid = 0;
     state.advanceLocked = false;
+    graderPrepCache.clear(); // drop any grader payloads prepared for a previous class
     _introSpeechPending = null; // FIX #6: clear any stale pending intro speech
 
     el.classSubject.textContent = `${subj.icon}  ${subj.name}`;
@@ -1274,6 +1394,9 @@
       _introSpeechPending = null;
     }
     showContinue("Start learning →");
+    // Requirement 5A: pre-warm the very first question's grader payload while the
+    // student reads the intro — purely static, no AI.
+    scheduleIdle(prepareNextGrader);
   }
   async function runTeach(concept) {
     const runToken = state.runToken;
@@ -1305,6 +1428,10 @@
     updateMetrics();
     showAnswerArea(true);
     el.answerInput.focus();
+    // Requirement 5A: background-prepare grading for THIS question and the next one,
+    // off the hot path. No AI call, no scoring — only cached string assembly so that
+    // Submit can fire the grader request immediately.
+    scheduleIdle(prepareGradingAhead);
   }
 
   async function runTestIntro() {
@@ -1320,6 +1447,9 @@
     await say(line);
     state.convo.push({ role: "assistant", content: line });
     showContinue("Start mini-test →");
+    // Requirement 5A: the adaptive plan is now fixed, so pre-warm the first
+    // mini-test question's grader payload while the student reads this intro.
+    scheduleIdle(prepareNextGrader);
   }
 
   async function runAsk(concept, mode) {
@@ -1346,6 +1476,9 @@
     speakBackground(q.question);
     showAnswerArea(true);
     el.answerInput.focus();
+    // Requirement 5A: background-prepare grading for THIS question and the next one
+    // (see runTeach). Static-only, off the hot path.
+    scheduleIdle(prepareGradingAhead);
   }
 
   // ── Answer submission + evaluation ─────────────────────────
@@ -1380,41 +1513,73 @@
     state.busy = true;
     el.submitAnswerBtn.disabled = true;
     el.skipQuestionBtn.disabled = true;
-    setAvatarState("thinking");
-    setPhase("thinking");
-    // Reveal the feedback card in a "checking…" state and scroll to it now, so
-    // the student's eye is already on the card the verdict will appear in.
-    showChecking();
+    // Cancel any lingering speech (e.g. the question still being read) so nothing
+    // overlaps the grading feedback — only one voice ever plays at a time.
+    stopSpeaking();
+    // Requirement 1: the moment Submit is pressed, scroll UP to the teacher so the
+    // student watches E.J.AI while the answer is graded.
+    scrollToTeacher();
+
     const pending = state.pending;
     const { concept, question, expected } = pending;
-    // Capture the qid at submission time so a stale async result from a
-    // different question can be discarded — never render feedback for the wrong qid.
+    // Capture the qid at submission time so a stale async result from a different
+    // question can be discarded — never render feedback for the wrong qid.
     const qid = state.currentQid;
-    const result = await evaluateAnswer(question, expected, pending.required, answer);
+
+    // Requirement 1: only LOOK busy if grading is slow. If the grade arrives within
+    // THINKING_DELAY_MS this timer is cleared and never fires, so a fast answer
+    // shows no thinking state and plays no waiting line. If grading is still running
+    // after the delay, show thinking + say the waiting line exactly once.
+    let waitingTimer = setTimeout(() => {
+      waitingTimer = null;
+      if (state.currentQid !== qid || state.consumedQids.has(qid)) return;
+      setPhase("thinking");
+      showChecking();
+      if (!state.muted && tts.supported) {
+        // speak() (not say()) so the waiting line never disturbs the caption/typewriter.
+        // gen identifies the generation speak() will claim (cancelSpeechQueue increments it).
+        const gen = tts.generation + 1;
+        const v = speak(WAITING_LINE);
+        setAvatarState("speaking"); // lip-sync (is-voicing) still only arms on real audio (u.onstart)
+        v.then((r) => {
+          if (r && r.cancelled) return;
+          if (gen !== tts.generation) return; // a newer line took over
+          if (state.currentQid === qid && !state.consumedQids.has(qid)) setAvatarState("thinking");
+        });
+      } else {
+        setAvatarState("thinking");
+      }
+    }, THINKING_DELAY_MS);
+
+    let result;
+    try {
+      result = await evaluateAnswer(question, expected, pending.required, answer);
+    } finally {
+      // Grade is in (or errored) — stop the pending "slow" treatment either way.
+      if (waitingTimer) { clearTimeout(waitingTimer); waitingTimer = null; }
+    }
+
     // Verify this result still belongs to the active question — a Skip, a new
     // question, or the class ending while awaiting the grader invalidates it.
     if (state.currentQid !== qid || state.consumedQids.has(qid)) {
       clearFeedback();
       return;
     }
+    // Cancel the waiting line if it is still speaking, so it never overlaps the verdict.
+    stopSpeaking();
 
-    // Grader unavailable (invalid JSON twice or an API/network failure): never
-    // mark the student wrong. Keep the SAME question and their typed answer, leave
-    // mastery and results untouched, and re-enable Submit so they can try again.
+    // Requirement 4: grader unavailable (invalid JSON twice, or an API/network/
+    // total-failover failure). NEVER mark the student wrong and NEVER show an error.
+    // Say a short, friendly line and auto-advance — the lesson is never blocked, and
+    // this question is left out of mastery/score (no recordAttempt) rather than failed.
     if (result.unavailable) {
-      setPhase("turn");
-      // Don't leave the card stuck on "checking…" — the student will retry.
       clearFeedback();
-      const notice = "Sorry, I couldn't check that answer just now. Please press Submit to try again.";
-      const said = await say(notice);
-      await waitForSpeech(said, notice);
-      if (state.currentQid === qid && !state.consumedQids.has(qid)) {
-        state.busy = false;
-        el.submitAnswerBtn.disabled = false;
-        el.skipQuestionBtn.disabled = false;
-        setAvatarState("idle");
-        el.answerInput.focus();
-      }
+      setPhase("turn");
+      showAnswerArea(false);
+      const said = await say(GRADER_FAIL_LINE);
+      await waitForSpeech(said, GRADER_FAIL_LINE);
+      if (state.currentQid !== qid || state.consumedQids.has(qid)) return;
+      advanceAfterQuestion(qid);
       return;
     }
 
@@ -1439,13 +1604,13 @@
     updateMetrics();
     showFeedback(result.verdict, spoken);
 
-    // Finish complete feedback text and bounded speech before the one advance.
+    // Requirement 2: show the verdict + explanation, then AUTO-CONTINUE for every
+    // verdict (correct / almost / incorrect). Finish the complete feedback text and
+    // its bounded speech before the single advance so nothing is cut off.
     const feedbackSaid = await say(spoken);
     await waitForSpeech(feedbackSaid, spoken);
-    // Verify qid is still active after speech - stale results must not continue
-    if (state.currentQid !== qid) {
-      return;
-    }
+    // Verify qid is still active after speech — stale results must not continue.
+    if (state.currentQid !== qid) return;
 
     advanceAfterQuestion(qid);
   }

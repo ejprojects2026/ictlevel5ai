@@ -1,5 +1,18 @@
 /* Temporary headless test of the real teacher.js class flow.
-   Serves the project, stubs /api/ai and speechSynthesis, drives the UI. */
+   Serves the project, stubs /api/ai and speechSynthesis, drives the UI.
+
+   Env knobs:
+     TTS_MODE = normal | stall | error | missing   (voice engine behaviour)
+     AI_MODE  = ok | fail | hang                    (grader behaviour)
+     AI_DELAY = milliseconds to delay the grade      (>1000 => "slow" path)
+     AI_VERDICT = correct | partial | incorrect      (override the derived verdict)
+
+   The grader contract this stub honours (matches assets/js/teacher.js callGrader):
+     REQUEST : POST { system, message, model, max_tokens, temperature }
+               where message = "QUESTION: …\nEXPECTED: …\nREQUIRED: …\nSTUDENT: …"
+     RESPONSE: 200 { reply, model }  where reply is a JSON string
+               {"verdict":"correct|partial|incorrect","score":0,"feedback":"…","missing":[…],"correction":"…"}
+               or a real error status (>=400) when the grader is unavailable. */
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -14,6 +27,32 @@ const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css
 // TTS_MODE is injected into the page: normal | stall | error | missing
 const TTS_MODE = process.env.TTS_MODE || "normal";
 const AI_MODE = process.env.AI_MODE || "ok"; // ok | fail | hang
+const AI_DELAY = parseInt(process.env.AI_DELAY || "0", 10) || 0;
+const SLOW = AI_DELAY > 1000;                 // exercises the 1s thinking/waiting path
+const TTS_LIVE = TTS_MODE !== "missing";      // waiting/fail lines only speak when TTS exists
+
+// Build a valid grader reply from the STUDENT answer in the request message, so the
+// test can drive correct/partial/incorrect just by varying the typed answer. An
+// explicit AI_VERDICT overrides the heuristic.
+function graderReply(message) {
+  const student = ((/STUDENT:\s*([\s\S]*)$/.exec(message || "") || [, ""])[1] || "").toLowerCase();
+  let verdict = process.env.AI_VERDICT;
+  if (!verdict) {
+    if (/redundan|normal|anomal|table/.test(student)) verdict = "correct";
+    else if (student.trim().length < 15) verdict = "incorrect";
+    else verdict = "partial";
+  }
+  const score = verdict === "correct" ? 92 : verdict === "partial" ? 60 : 20;
+  const feedback =
+    verdict === "correct" ? "Exactly right — you covered the key idea." :
+    verdict === "partial" ? "Good start, but you're missing the point about reducing redundancy." :
+    "That's not quite it — the core idea is organising data to reduce redundancy.";
+  return JSON.stringify({
+    verdict, score, feedback,
+    missing: verdict === "correct" ? [] : ["reducing redundancy"],
+    correction: "Normalization organises data into related tables to reduce redundancy."
+  });
+}
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://x");
@@ -21,30 +60,29 @@ const server = http.createServer((req, res) => {
     let body = "";
     req.on("data", (c) => (body += c));
     req.on("end", () => {
-      if (AI_MODE === "hang") return; // never respond: exercises the timeout
-      if (AI_MODE === "fail") {
-        res.writeHead(500, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ error: "stub failure" }));
-      }
-      let instruction = "";
-      try { const j = JSON.parse(body); instruction = (j.history || []).map(h => h.content).join("\n"); } catch (_) {}
-      let reply;
-      if (/Judge the actual question/.test(instruction)) {
-        reply = JSON.stringify({ result: "correct", score: 95, reason: "covers the required ideas about database normalization and redundancy",
-          missing: [], corrections: [], feedback: "Exactly right, well explained.",
-          correctAnswer: "Normalization organizes data to reduce redundancy.", misconception: "" });
-      } else if (/Ask ONE short exam-style question/.test(instruction)) {
-        reply = JSON.stringify({ question: "STUB TEST QUESTION: explain the idea in your own words.", expected: "A clear explanation of the concept." });
-      } else if (/struggling with/.test(instruction)) {
-        reply = JSON.stringify({ explanation: "STUB REMEDIATION EXPLANATION.", board: { concept: "Retry", points: ["a", "b"], code: "" },
-          question: "STUB REMEDIATION QUESTION?", expected: "x" });
-      } else {
-        reply = JSON.stringify({ explanation: "STUB TEACHING EXPLANATION. " + "Padding sentence. ".repeat(20),
-          board: { concept: "Stub concept", points: ["point one", "point two", "point three"], code: "" },
-          question: "STUB TEACHING QUESTION?", expected: "The ideal answer mentions redundancy." });
-      }
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ reply }));
+      if (AI_MODE === "hang") return; // never respond: exercises the client timeout
+      let j = {};
+      try { j = JSON.parse(body || "{}"); } catch (_) { }
+      // The grader always sends an allow-listed model and a "STUDENT:" line.
+      const isGrader = !!j.model || /STUDENT:/.test(j.message || "") || /grader/i.test(j.system || "");
+      const respond = () => {
+        if (AI_MODE === "fail") {
+          // Total grader failure: return a real error status like api/ai.js does on
+          // full failover (502/504). The client maps any non-OK response to
+          // GRADER_UNAVAILABLE and must advance gracefully, never mark the student wrong.
+          res.writeHead(502, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ error: "stub upstream failure (all models)" }));
+        }
+        if (isGrader) {
+          const reply = graderReply(j.message);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ reply, model: j.model || "stub-grader" }));
+        }
+        // Non-grader request should not happen (teaching is local). Harmless reply.
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ reply: "OK", model: j.model || "stub" }));
+      };
+      if (AI_DELAY > 0) setTimeout(respond, AI_DELAY); else respond();
     });
     return;
   }
@@ -151,6 +189,7 @@ const snap = `(() => {
   const vis = (id) => { const e=document.getElementById(id); if(!e) return false;
     if (e.classList.contains("hidden") || e.classList.contains("empty")) return false;
     return e.getClientRects().length > 0; };
+  const log = window.__speechLog || [];
   return { say: t("sayText"), sayLen: (t("sayText")||"").length, phase: t("phaseChip"),
     question: t("questionText"), questionVisible: vis("questionBox"),
     answerVisible: vis("answerArea"), continueVisible: vis("continueRow"),
@@ -159,7 +198,10 @@ const snap = `(() => {
     submitDisabled: !!document.getElementById("submitAnswerBtn")?.disabled,
     boardVisible: vis("board"), screen: ["setup","class","results"].find(s=>{
       const e=document.getElementById("screen-"+s); return e && e.classList.contains("active"); }),
-    spoken: (window.__speechLog||[]).length, status: t("statusText"), score: t("scoreNum") };
+    spoken: log.length, status: t("statusText"), score: t("scoreNum"),
+    waitingSpoken: log.some(x=>/Give me a moment/i.test(x)),
+    failLineSpoken: log.some(x=>/move on to the next point|Thanks for your answer/i.test(x)),
+    sorrySpoken: log.some(x=>/Sorry, I couldn'?t check/i.test(x)) };
 })()`;
 
 async function waitFor(cond, label, ms = 20000) {
@@ -178,7 +220,7 @@ function ok(name, detail) { steps.push({ name, pass: true, detail }); console.lo
 function fail(name, err) { steps.push({ name, pass: false, detail: String(err) }); console.log("FAIL  " + name + "  — " + err); }
 
 try {
-  console.log(`\n=== TTS_MODE=${TTS_MODE}  AI_MODE=${AI_MODE} ===`);
+  console.log(`\n=== TTS_MODE=${TTS_MODE}  AI_MODE=${AI_MODE}  AI_DELAY=${AI_DELAY}${SLOW ? " (slow)" : ""} ===`);
 
   // 1. Start class
   const first = await evalJs(`(() => {
@@ -199,55 +241,88 @@ try {
   s = await waitFor((x) => x.continueVisible, "continue button");
   ok("3. continue button appears", s.continueLabel);
 
-  // 4/5. Click continue -> teaching text
+  // 4/5. Click continue -> teaching text (loaded LOCALLY from teacherData.js, no AI)
   await evalJs(`document.getElementById("continueBtn").click()`);
-  s = await waitFor((x) => x.sayLen > 60 && /STUB TEACHING EXPLANATION|Padding|:/.test(x.say || ""), "teaching text");
-  ok("5. teaching text renders", `${s.sayLen} chars, board=${s.boardVisible}`);
+  s = await waitFor((x) => x.sayLen > 60, "teaching text");
+  ok("5. teaching text renders (local, no AI)", `${s.sayLen} chars, board=${s.boardVisible}`);
 
   // 6. Question appears
   s = await waitFor((x) => x.questionVisible && x.question, "question");
-  ok("6. question appears", JSON.stringify(s.question).slice(0, 60));
+  ok("6. question appears (local, no AI)", JSON.stringify(s.question).slice(0, 60));
 
   // 7. Answer box + submit
   s = await waitFor((x) => x.answerVisible && !x.submitDisabled, "answer area");
   ok("7. answer area + submit appear", `spokenChunks=${s.spoken}`);
 
-  // 8. Submit works
+  // 8. Submit a good answer.
   await evalJs(`(() => { const a=document.getElementById("answerInput");
     a.value="Normalization organizes data into related tables to reduce redundancy and avoid update anomalies.";
     document.getElementById("submitAnswerBtn").click(); return true; })()`);
   ok("8. submit accepted");
 
-  // 9. Feedback appears
-  s = await waitFor((x) => x.feedbackVisible && x.feedbackText, "feedback");
-  ok("9. feedback appears", `${s.verdict}: ${(s.feedbackText || "").slice(0, 50)}`);
-
-  // 10. Continue works after feedback
-  s = await waitFor((x) => x.continueVisible || x.answerVisible || x.screen === "results", "post-feedback affordance");
-  if (s.continueVisible) {
-    await evalJs(`document.getElementById("continueBtn").click()`);
-    s = await waitFor((x) => x.sayLen > 20 || x.screen === "results", "next step after continue");
-    ok("10. continue advances the class", `phase=${s.phase} screen=${s.screen}`);
-  } else {
-    ok("10. class advanced to next prompt without continue", `answerVisible=${s.answerVisible} phase=${s.phase}`);
-  }
-
-  // Drive the rest of the class to the results screen.
-  let guard = 0;
-  while (guard++ < 40) {
-    s = await evalJs(snap);
-    if (s.screen === "results") break;
-    if (s.continueVisible) { await evalJs(`document.getElementById("continueBtn").click()`); }
-    else if (s.answerVisible && !s.submitDisabled) {
-      await evalJs(`(() => { const a=document.getElementById("answerInput");
-        a.value="Normalization organizes data into related tables to reduce redundancy and avoid anomalies.";
-        document.getElementById("submitAnswerBtn").click(); return true; })()`);
+  if (AI_MODE === "ok") {
+    // 8b/8c. Requirement 1: the thinking state + the waiting line appear ONLY when
+    // grading is slow (> ~1s). For a fast grade neither should occur (checked at 9b).
+    if (SLOW) {
+      try {
+        const th = await waitFor((x) => /thinking/i.test(x.phase || "") || /thinking/i.test(x.status || ""), "thinking state (slow grade)", 2500);
+        ok("8b. thinking state shown for slow grade", `phase=${th.phase} status=${th.status}`);
+      } catch (e) { fail("8b. thinking state shown for slow grade", e.message); }
+      if (TTS_LIVE) {
+        const wl = await waitFor((x) => x.waitingSpoken, "waiting line (slow grade)", 3000).catch(() => null);
+        if (wl) ok("8c. waiting line spoken for slow grade");
+        else fail("8c. waiting line spoken for slow grade", "not found in speech log");
+      }
     }
-    await new Promise((r) => setTimeout(r, 600));
+
+    // 9. Feedback appears with a real verdict label — proves the grader JSON parsed.
+    const s9 = await waitFor((x) => x.feedbackVisible && x.feedbackText && /Correct|Almost|Not quite/i.test(x.verdict || ""), "feedback + verdict", SLOW ? 8000 : 20000);
+    ok("9. feedback + verdict render", `${s9.verdict}: ${(s9.feedbackText || "").slice(0, 50)}`);
+
+    // 9b. Requirement 1: a FAST grade must NOT have played the waiting line.
+    if (!SLOW && TTS_LIVE) {
+      if (!s9.waitingSpoken) ok("9b. fast grade played NO waiting line");
+      else fail("9b. fast grade played NO waiting line", "waiting line was spoken on a fast grade");
+    }
+  } else {
+    // Requirement 4: grader failure (fail/hang) must NEVER show an error and NEVER
+    // block — a short line is spoken and the class auto-advances past the question.
+    const budget = AI_MODE === "hang" ? 16000 : 8000;
+    const adv = await waitFor(
+      (x) => x.failLineSpoken || x.screen === "results" || x.continueVisible || (x.answerVisible && !x.submitDisabled),
+      "graceful auto-advance after grader failure", budget);
+    if (adv.sorrySpoken) fail("9. grader failure shows NO 'Sorry' error", "the old 'Sorry, I couldn't check' line was spoken");
+    else ok("9. grader failure shows NO 'Sorry' error");
+    if (TTS_LIVE) {
+      const line = adv.failLineSpoken ? adv : await waitFor((x) => x.failLineSpoken, "graceful move-on line", 4000).catch(() => null);
+      if (line) ok("9b. graceful 'move on' line spoken on grader failure");
+      else fail("9b. graceful 'move on' line spoken on grader failure", "not found in speech log");
+    }
   }
-  s = await evalJs(snap);
-  if (s.screen === "results") ok("11. full class reaches results", `score=${s.score}`);
-  else fail("11. full class reaches results", `stuck: ${JSON.stringify(s)}`);
+
+  // 10/11. The class must always reach results without getting stuck — for a working
+  // grader (ok) and for a permanently-failing grader (fail), since a grader failure
+  // must never block the lesson. (hang is too slow to fully drive here.)
+  if (AI_MODE === "hang") {
+    ok("11. full-class drive skipped for hang mode (single-question graceful advance already verified)");
+  } else {
+    let guard = 0;
+    while (guard++ < 60) {
+      s = await evalJs(snap);
+      if (s.screen === "results") break;
+      if (s.continueVisible) {
+        await evalJs(`document.getElementById("continueBtn").click()`);
+      } else if (s.answerVisible && !s.submitDisabled) {
+        await evalJs(`(() => { const a=document.getElementById("answerInput");
+          a.value="Normalization organizes data into related tables to reduce redundancy and avoid anomalies.";
+          document.getElementById("submitAnswerBtn").click(); return true; })()`);
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    s = await evalJs(snap);
+    if (s.screen === "results") ok("11. full class reaches results without blocking", `score=${s.score}`);
+    else fail("11. full class reaches results without blocking", `stuck: ${JSON.stringify(s)}`);
+  }
 } catch (e) {
   fail("flow", e.message);
 }
@@ -255,7 +330,7 @@ try {
 const failed = steps.filter((x) => !x.pass);
 console.log("\nconsole output:");
 logs.slice(0, 25).forEach((l) => console.log("  " + l));
-console.log(`\nRESULT ${TTS_MODE}/${AI_MODE}: ${steps.length - failed.length}/${steps.length} passed`);
+console.log(`\nRESULT ${TTS_MODE}/${AI_MODE}${SLOW ? "/slow" : ""}: ${steps.length - failed.length}/${steps.length} passed`);
 
 ws.close();
 try { chrome.kill(); } catch (_) {}
