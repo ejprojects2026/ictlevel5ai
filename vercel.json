@@ -14,7 +14,7 @@
     { "source": "/lesson", "destination": "/lesson.html" },
     { "source": "/papers", "destination": "/papers.html" },
     { "source": "/notes", "destination": "/notes.html" },
-    { "source": "/community", "destination": "/community.html" },
+    { "source": "/community", "destination": "/posts.html" },
     { "source": "/add-notes", "destination": "/add-notes.html" }
   ]
 }
