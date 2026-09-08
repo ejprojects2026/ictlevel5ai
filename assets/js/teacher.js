@@ -824,12 +824,13 @@
   // Short, cheap, JSON-only grader prompt. The AI is the ONLY thing that decides
   // the verdict; the score is supporting information and must never convert it.
   const GRADER_SYSTEM = [
-    "You are an ICT exam grader. Judge the student's answer to the question using the required points and expected answer. Judge meaning, not wording. Accept valid synonyms, paraphrases and concise answers.",
+    "You are an ICT exam grader. Judge the student's answer to the question using the required points. Judge meaning, not wording. Accept valid synonyms, paraphrases, concise answers and valid equivalent examples.",
     "correct = all essential points are satisfied and no major error.",
     "partial = main idea is correct but an important point is missing or there is a minor fixable misunderstanding.",
     "incorrect = core idea is wrong, unrelated, evasive, meaningless, or has a major factual error.",
     "Do not use keyword matching. Do not require the expected answer wording.",
     "Judge ONLY the REQUIRED points listed for this specific question. If REQUIRED lists one point, do not demand a second one. Never invent extra requirements the question did not ask for.",
+    "REFERENCE CONTEXT is teaching material, not a rubric. Use it only to check factual accuracy; never require its particular example, its extra details or its wording. A different valid example that answers the question is correct. Extra correct information must not lower the verdict.",
     "feedback: one or two short sentences for text-to-speech. If correct, briefly confirm; if partial, say what was right and exactly what is missing; if incorrect, name the misconception and give the correct idea.",
     "score is a REQUIRED number and must match the verdict band: correct 80-100, partial 40-79, incorrect 0-39. Choose the number that reflects how complete the answer is inside that band.",
     "Always write every value in English, even when the student answers in another language.",
@@ -875,7 +876,7 @@
       : [];
     const messagePrefix = [
       "QUESTION: " + compactForGrader(question, 900),
-      "EXPECTED: " + compactForGrader(expected, 1200),
+      "REFERENCE CONTEXT (not required): " + compactForGrader(expected, 1200),
       "REQUIRED: " + JSON.stringify(requiredPoints)
     ].join("\n");
     return {
@@ -1119,6 +1120,10 @@
       points.push("Names a realistic situation where " + name + " would be used.");
     } else if (/with an example/i.test(q)) {
       points.push("Gives a concrete example of " + name + ".");
+    }
+
+    if (/what could go wrong|risk(?:s)?(?: or limitation(?:s)?)?|if it is used incorrectly|limitation(?:s)? (?:a practitioner )?should review/i.test(q)) {
+      points.push("Explains a relevant risk, limitation or consequence of using " + name + " incorrectly.");
     }
 
     return points.filter(Boolean).slice(0, 3);

@@ -9,7 +9,7 @@
 
    The grader contract this stub honours (matches assets/js/teacher.js callGrader):
      REQUEST : POST { system, message, model, max_tokens, temperature }
-               where message = "QUESTION: …\nEXPECTED: …\nREQUIRED: …\nSTUDENT: …"
+               where message = "QUESTION: …\nREFERENCE CONTEXT (not required): …\nREQUIRED: …\nSTUDENT: …"
      RESPONSE: 200 { reply, model }  where reply is a JSON string
                {"verdict":"correct|partial|incorrect","score":0,"feedback":"…","missing":[…],"correction":"…"}
                or a real error status (>=400) when the grader is unavailable. */
