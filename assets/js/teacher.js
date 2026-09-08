@@ -366,7 +366,8 @@
     voice: null,
     ready: false,
     generation: 0,
-    active: null
+    active: null,
+    gestureIntro: null
   };
 
   // Prefer an English MALE voice; fall back safely to any English voice.
@@ -396,32 +397,15 @@
     return true;
   }
 
-  // FIX #6: Track whether the intro has already been spoken so a late
-  // voiceschanged event doesn't re-trigger it. Voices often load after the
-  // class has already started; we only need to re-speak the very first line.
-  let _introSpeechPending = null; // { text } set during runIntro if voices were absent
-
   if (tts.supported) {
     try {
       pickVoice();
-      // Voices often load asynchronously — wire up the callback once.
+      // Android Chrome commonly populates this list after the page has loaded.
+      // Updating the selected voice is enough for the next utterance; never
+      // speak from this event because it is not a user gesture and could replay
+      // an old lesson line over the current one.
       window.speechSynthesis.onvoiceschanged = () => {
-        const hadVoice = tts.ready;
         pickVoice();
-        // If the intro was waiting for a voice, speak it now (once only) — but ONLY
-        // while the intro is still the thing on screen. Voices can finish loading
-        // after the student has already pressed Continue, and replaying the intro
-        // then would cancel the teaching speech and talk over the lesson.
-        if (!hadVoice && _introSpeechPending) {
-          const pending = _introSpeechPending;
-          _introSpeechPending = null;
-          const stillOnIntro = state.lastSpoken === pending.text;
-          if (!state.muted && stillOnIntro) {
-            speak(pending.text).then((r) => {
-              if (!r || !r.cancelled) setAvatarState("idle");
-            });
-          }
-        }
       };
     } catch (_) { /* a broken voice list must not stop the class */ }
   }
@@ -536,6 +520,10 @@
     state.lastSpoken = spoken;
     cancelSpeechQueue();
     if (!tts.supported || state.muted || !spoken) return Promise.resolve({ cancelled: false });
+    // Re-check immediately before every utterance. This captures voice lists
+    // that arrived without (or just before) voiceschanged, while leaving the
+    // browser's default available as a reliable fallback when none is exposed.
+    pickVoice();
     const generation = tts.generation;
     const chunks = splitSpeech(spoken, 240);
     const run = (async () => {
@@ -1438,6 +1426,15 @@
   }
   function hideContinue() { el.continueRow.classList.add("hidden"); }
   // ── Flow controller ─────────────────────────────────────────
+  function introText() {
+    const names = state.lesson.concepts.map((c) => c.name);
+    const preview = names.slice(0, 3).join(", ");
+    return `Hi, I'm E.J.AI, your teacher for today. Welcome to ${state.subject.name}. ` +
+      `In this lesson, "${state.lesson.title}", we'll cover ${preview}` +
+      (names.length > 3 ? ", and more." : ".") +
+      ` I'll explain each idea, then ask you a question. Ready? Let's begin.`;
+  }
+
   function startClass(subjectId, lessonId) {
     const subj = window.teacherData.getSubject(subjectId);
     const lsn = window.teacherData.getLesson(subjectId, lessonId);
@@ -1462,8 +1459,6 @@
     state.nextQid = 0;
     state.advanceLocked = false;
     graderPrepCache.clear(); // drop any grader payloads prepared for a previous class
-    _introSpeechPending = null; // FIX #6: clear any stale pending intro speech
-
     el.classSubject.textContent = `${subj.icon}  ${subj.name}`;
     el.classLesson.textContent = lsn.title;
     clearBoard(); clearQuestion(); clearFeedback();
@@ -1472,6 +1467,23 @@
     updateProgress();
     updateMetrics("Lesson starting…");
     showScreen("class");
+    // Start the first real utterance while the Start/Retry/Recommendation click
+    // is still active. Mobile Chrome can discard speech first requested after an
+    // async typewriter/microtask, even though the click began the lesson. The
+    // selected voice is used when available; otherwise the utterance deliberately
+    // lets Chrome choose its available default instead of failing silently.
+    const initialText = introText();
+    setAvatarState("speaking");
+    const initialVoice = speak(initialText);
+    const initialSpeech = { runToken: state.runToken, text: initialText, voice: initialVoice };
+    tts.gestureIntro = initialSpeech;
+    initialVoice.then((result) => {
+      // Do not let an old intro reset the avatar while another line is speaking.
+      if ((!result || !result.cancelled) && tts.gestureIntro === initialSpeech && !tts.active) {
+        setAvatarState("idle");
+      }
+    });
+    if (!tts.supported || state.muted) setAvatarState("idle");
     nextStep();
   }
 
@@ -1508,29 +1520,18 @@
     }
   }
 
-  // FIX #6: If no voice is available yet when the intro runs, store the intro
-  // text so the voiceschanged callback can speak it once voices load.
   async function runIntro() {
     const runToken = state.runToken;
     setPhase("welcome");
     updateMetrics("Lesson intro");
     clearBoard(); clearQuestion(); showAnswerArea(false);
-    const names = state.lesson.concepts.map((c) => c.name);
-    const preview = names.slice(0, 3).join(", ");
-    const intro =
-      `Hi, I'm E.J.AI, your teacher for today. Welcome to ${state.subject.name}. ` +
-      `In this lesson, "${state.lesson.title}", we'll cover ${preview}` +
-      (names.length > 3 ? ", and more." : ".") +
-      ` I'll explain each idea, then ask you a question. Ready? Let's begin.`;
-    // FIX #6: Register deferred speech if voices haven't loaded yet.
-    if (tts.supported && !tts.ready && !state.muted) {
-      _introSpeechPending = { text: intro };
-    }
-    await say(intro);
-    // Clear pending flag if say() managed to speak (voices loaded in time).
-    if (_introSpeechPending && _introSpeechPending.text === intro) {
-      _introSpeechPending = null;
-    }
+    const intro = introText();
+    // startClass already issued this exact line in the activating click. Keep
+    // the normal caption timing, but do not cancel and replay the utterance.
+    const initial = tts.gestureIntro;
+    const usedGestureSpeech = initial && initial.runToken === runToken && initial.text === intro;
+    await typeText(intro);
+    if (!usedGestureSpeech) speakBackground(intro);
     // The class can be ended or restarted while the intro is still speaking; without
     // this check the old run would paint its Continue button over the results screen.
     if (runToken !== state.runToken) return;

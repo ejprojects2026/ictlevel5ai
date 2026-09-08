@@ -83,7 +83,7 @@ function reg(id, tag) { const e = mkEl(tag); e._id = id; e.attributes.id = id; r
   "avatar","statusPill","statusText","muteBtn","replayBtn","stopBtn",
   "teacherSay","sayText","board","boardConcept","boardPoints","boardCode",
   "feedback","verdict","verdictText","questionBox","questionText","answerArea","transcript","answerInput",
-  "micBtn","submitAnswerBtn","continueRow","continueBtn",
+  "micBtn","submitAnswerBtn","skipQuestionBtn","continueRow","continueBtn",
   "resultsTitle","resultsSubtitle","scoreFill","scoreNum","scoreGrade","scoreSub",
   "statAnswered","statCorrect","statAccuracy","statConcepts",
   "goodList","workList","goodNone","workNone","recoTitle","recoSub","recoGoBtn","retryBtn","newLessonBtn"
@@ -182,7 +182,9 @@ function buildSandbox({ speechMode, fetchBehavior, muted }) {
     SpeechSynthesisUtterance: speech.Utter,
     SpeechRecognition: undefined,
     webkitSpeechRecognition: undefined,
-    matchMedia: () => ({ matches: false }),
+    // Keep flow assertions fast; the typewriter itself is covered separately
+    // from this speech/failure harness.
+    matchMedia: () => ({ matches: true }),
     scrollTo: () => {},
     addEventListener: () => {},
     removeEventListener: () => {},
@@ -204,7 +206,7 @@ function buildSandbox({ speechMode, fetchBehavior, muted }) {
   const teacherCode = fs.readFileSync(path.join(__dirname, "teacher.js"), "utf8");
   vm.runInContext(teacherCode, sandbox, { filename: "teacher.js" });
   if (muted) registry.muteBtn.click(); // toggle mute on
-  return { sandbox, win };
+  return { sandbox, win, speech };
 }
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -229,7 +231,7 @@ async function runScenario(label, cfg) {
   Object.values(registry).forEach((e) => { e._text = ""; e._html = ""; e.classList._s = new Set(); });
   registry.scoreFill.attributes.r = "52";
 
-  const { win } = buildSandbox(cfg);
+  const { win, speech } = buildSandbox(cfg);
   const { subjectId, lessonId } = pickFirstSubjectLesson(win);
 
   // Drive the start button exactly like a user click.
@@ -239,6 +241,18 @@ async function runScenario(label, cfg) {
   registry.lessonSelect.dispatch("change", {});
   registry.startClassBtn.disabled = false;
   registry.startClassBtn.click();
+
+  // Mobile Chrome may require the first speak() call to happen in this click,
+  // not after the intro's async typewriter work. The real teacher code must
+  // therefore issue the intro synchronously from the Start interaction.
+  if (cfg.speechMode === "normal" && !cfg.muted) {
+    ok(label + " · intro speech starts inside Start click", speech.synth._utters.length === 1);
+    // Simulate Android Chrome completing its asynchronous voice discovery.
+    // This must select voices for later lines, not replay the intro outside the
+    // activating gesture or cancel current speech.
+    speech.synth.onvoiceschanged();
+    ok(label + " · async voices update does not replay intro", speech.synth._utters.length === 1);
+  }
 
   // Give the intro a moment (typewriter guard is generous; text renders fast).
   await delay(400);
@@ -250,7 +264,7 @@ async function runScenario(label, cfg) {
 
   // Advance into the first teaching step.
   registry.continueBtn.click();
-  await delay(500);
+  await delay(cfg.speechMode === "stall" ? 3200 : 500);
   ok(label + " · teaching text rendered", registry.sayText.textContent.length > 0);
   ok(label + " · board populated", !registry.board.classList.contains("empty"));
   ok(label + " · question shown", !registry.questionBox.classList.contains("empty"));
