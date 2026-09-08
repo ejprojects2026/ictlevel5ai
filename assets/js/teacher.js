@@ -705,28 +705,17 @@
     return { cancelled: false, voice, generation };
   }
 
-  // Wait for a spoken line (returned by say) to finish before proceeding, with a
-  // hard ceiling so a stalled, failed, muted or unsupported voice can NEVER
-  // freeze the lesson. The text is already on screen; only speech is awaited.
+  // Wait for a spoken line (returned by say) to finish before proceeding. The
+  // chunk-level start and duration watchdogs guarantee that its promise settles
+  // if TTS stalls or fails, so this must not use a shorter text-length timeout:
+  // that timeout could advance to a question and cancel the final chunk.
   function waitForSpeech(said, text) {
     const voice = said && said.voice;
     // Nothing is actually being spoken — do not hold the flow at all.
     if (!tts.supported || state.muted || !voice) return Promise.resolve();
-    // Generous upper bound from the text length (~14 chars/sec of speech),
-    // clamped so it stays a safety net rather than a stall.
-    // Requirement 12: this is a safety net, not a schedule. The per-chunk start and
-    // duration watchdogs in speakChunk already resolve a broken engine quickly, so
-    // this ceiling only matters if those somehow do not fire — 90 s was long enough
-    // to look like a hung lesson, so it is capped at 45 s.
-    const chars = String(text || "").length;
-    const maxMs = Math.max(5000, Math.min(45000, Math.round((chars / 14) * 1000) + 4000));
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => { if (done) return; done = true; clearTimeout(timer); resolve(); };
-      const timer = setTimeout(finish, maxMs);
-      // speak() always resolves (never rejects); .catch is belt-and-suspenders.
-      voice.then(finish, finish);
-    });
+    // speak() always resolves (never rejects); the rejection handler is
+    // belt-and-suspenders for an unexpected engine error.
+    return voice.then(() => undefined, () => undefined);
   }
   // ── Speech-to-text engine (SpeechRecognition) ──────────────
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1558,7 +1547,7 @@
     const said = await say(turn.explanation);
     // Let E.J.AI actually finish speaking the teaching before moving on. The
     // text is already on screen; this only holds the scroll/question until the
-    // spoken explanation ends (or a safe timeout), never on the visible text.
+    // spoken explanation settles, including the TTS failure watchdogs.
     await waitForSpeech(said, turn.explanation);
     if (runToken !== state.runToken) return;
     // Ask the paired question (spoken + pinned, but keep the explanation caption).
