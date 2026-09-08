@@ -1,0 +1,20 @@
+{
+  "redirects": [
+    { "source": "/ai.html", "destination": "/ai", "permanent": true },
+    { "source": "/teacher.html", "destination": "/teacher", "permanent": true },
+    { "source": "/lesson.html", "destination": "/lesson", "permanent": true },
+    { "source": "/papers.html", "destination": "/papers", "permanent": true },
+    { "source": "/notes.html", "destination": "/notes", "permanent": true },
+    { "source": "/community.html", "destination": "/community", "permanent": true },
+    { "source": "/add-notes.html", "destination": "/add-notes", "permanent": true }
+  ],
+  "rewrites": [
+    { "source": "/ai", "destination": "/ai.html" },
+    { "source": "/teacher", "destination": "/teacher.html" },
+    { "source": "/lesson", "destination": "/lesson.html" },
+    { "source": "/papers", "destination": "/papers.html" },
+    { "source": "/notes", "destination": "/notes.html" },
+    { "source": "/community", "destination": "/community.html" },
+    { "source": "/add-notes", "destination": "/add-notes.html" }
+  ]
+}

@@ -27,14 +27,14 @@
       <button class="mobile-menu-btn" aria-label="Toggle menu" aria-expanded="false">☰</button>
       <div class="nav-menu">
         <ul class="nav-links">
-          <li><a href="index.html">Home</a></li>
-          <li><a href="lesson.html">Notes</a></li>
-          <li><a href="papers.html" class="active">Papers</a></li>
-          <li><a href="teacher.html">AI Teacher</a></li>
-          <li><a href="posts.html">Community</a></li>
+          <li><a href="/">Home</a></li>
+          <li><a href="lesson">Notes</a></li>
+          <li><a href="papers" class="active">Papers</a></li>
+          <li><a href="teacher">AI Teacher</a></li>
+          <li><a href="community">Community</a></li>
         </ul>
         <div class="nav-buttons">
-          <a href="upload.html" class="btn btn-outline">Add Notes</a>
+          <a href="add-notes" class="btn btn-outline">Add Notes</a>
           <button id="theme-toggle" class="btn" aria-label="Toggle theme">☀️</button>
         </div>
       </div>
@@ -302,7 +302,7 @@
       <span class="ai-popup-close" id="aiPopupClose" aria-label="Close">✕</span>
       <p class="ai-popup-line1">Hello 👋</p>
       <p class="ai-popup-line2">Need help with ICT or coding?</p>
-      <a href="ai.html" class="ai-popup-cta">Chat with EJ.Ai →</a>
+      <a href="ai" class="ai-popup-cta">Chat with EJ.Ai →</a>
     </div>
     <!-- Main button -->
     <button class="ai-button" id="aiButton" aria-label="Open EJ.Ai Chat">
@@ -546,9 +546,9 @@
         hidePopup();
       });
 
-      // Button click → navigate to ai.html
+      // Button click → navigate to ai
       btn.addEventListener('click', function () {
-        window.location.href = 'ai.html';
+        window.location.href = 'ai';
       });
     })();
   </script>
